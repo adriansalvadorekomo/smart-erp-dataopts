@@ -1,0 +1,10 @@
+[project]
+name = "smart-erp"
+version = "0.1.0"
+description = "DataOps-driven ERP for e-commerce — 10-phase build: Data Engineering, dbt, Airflow, ML/RAG, BI dashboards"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dbt-core>=1.11.11",
+    "dbt-postgres>=1.10.0",
+]
