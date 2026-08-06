@@ -13,3 +13,8 @@ wheels/
 logs/
 target/
 dbt_packages/
+
+# Raw datasets (large files — never commit)
+data/amazon-e-commerce/*.csv
+.opencode/
+.sessions/

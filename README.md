@@ -50,9 +50,9 @@
 
 | Phase | Component | Status |
 |-------|-----------|--------|
-| 1 | **Business Model** — e-commerce definition, KPIs, money flow | 🟡 Planned |
-| 2 | **Database** — PostgreSQL with 5 core tables (`customers`, `products`, `inventory`, `orders`, `order_items`) | 🟢 Ready |
-| 3 | **Seed Data** — Synthetic data generation with Faker + numpy (Pareto distribution, 500+ customers, 10k+ orders) | 🟡 Planned |
+| 1 | **Business Model** — multi-seller marketplace (India, INR), KPIs, money flow — [docs/business-model.md](docs/business-model.md) | 🟢 Done |
+| 2 | **Database** — PostgreSQL with 6 core tables + `raw`/`staging` — [database/](database/) | 🟢 Done |
+| 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟡 Next |
 | 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟡 Planned |
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
 | 6 | **Data Pipeline** — PostgreSQL → Airbyte → dbt (staging/intermediate/marts) → Airflow orchestration | 🟢 Scaffolded |
@@ -80,6 +80,27 @@
 
 ---
 
+## Project Structure
+
+```
+smart-erp/
+├── docs/                # [1] Business model — KPIs, money flow, domain definitions
+├── database/            # [2] PostgreSQL schema + versioned migrations (apply.sh)
+├── scripts/seed/        # [3] Dataset ingestion (CSV → raw → normalized, validated)
+├── backend/app/         # [4] FastAPI — api/ core/ models/ schemas/ services/
+├── frontend/            # [5] React (Vite) + TanStack Query + shadcn/ui
+├── data/
+│   ├── dbt/             # [6] dbt project — models/{staging,intermediate,marts}
+│   ├── airbyte/         # [6] Airbyte connection configs
+│   └── airflow/dags/    # [6] Airflow orchestration DAGs
+├── bi/                  # [7] Metabase / Power BI dashboards
+├── ml/                  # [8] Sales prediction + churn (MLflow-tracked)
+├── rag/                 # [9] Embeddings + LLM chat over ERP data
+└── infra/               # [10] Dockerfiles + deploy configs
+```
+
+---
+
 ## Quick Start
 
 ```bash
@@ -93,7 +114,7 @@ source .venv/bin/activate
 uv sync
 
 # Run dbt (development)
-cd smart_erp_dbt
+cd data/dbt
 dbt debug
 dbt run
 ```
