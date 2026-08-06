@@ -8,8 +8,12 @@ Early-stage scaffold of a 10-phase DataOps ERP (e-commerce marketplace, India, I
 
 - Python 3.12, managed with **uv** (`uv sync`, `uv run ...`). Only dependencies: `dbt-core`, `dbt-postgres`.
 - The dbt project lives at **`data/dbt/`**, not the repo root — run `dbt` commands from that directory (`cd data/dbt && dbt run`).
-- dbt profile `smart_erp_dbt` lives in **`~/.dbt/profiles.yml`** (outside the repo, machine-local, points at a local PostgreSQL). Do not add a repo-local `profiles.yml`.
-- No CI, tests, or linter are configured yet.
+- dbt profile `smart_erp_dbt` lives in **`~/.dbt/profiles.yml`** (outside the repo, machine-local, points at a local PostgreSQL). Do not add a repo-local `profiles.yml`. CI injects its own profile under the CI `DBT_PROFILES_DIR`.
+
+## Workflow / branching
+
+- **Trunk-Based Development**: short-lived branches (e.g. `feat/<phase>-<slug>`) merged to `main` only via PR; `main` is protected and always deployable. Full contract: **`docs/branching-strategy.md`**.
+- **CI/CD:** `.github/workflows/ci.yml` (PR + push to `main`) and `.github/workflows/release.yml` (tag `v*`). CI runs on GitHub-hosted runners — no local DB required (Postgres is a service container; dbt profile is written inline).
 
 ## Domain contract
 

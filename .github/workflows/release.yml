@@ -1,0 +1,33 @@
+name: Release
+
+# Trunk-Based release flow (see docs/branching-strategy.md §3–§4).
+# A maintainer tags main with `v*` → CI validates, then this builds/publishes.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Release v${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: Validate project metadata at tag
+        run: uv lock --check && uv run dbt parse --project-dir data/dbt
+      - name: Draft GitHub Release
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Release $GITHUB_REF_NAME" \
+            --generate-notes \
+            --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}

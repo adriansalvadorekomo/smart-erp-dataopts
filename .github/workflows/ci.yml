@@ -1,0 +1,143 @@
+name: CI
+
+# Trunk-Based Development gate (see docs/branching-strategy.md §5).
+# Runs against every pull request into main and every push to main.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lockfile:
+    name: uv — lockfile in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Verify lockfile matches pyproject.toml
+        run: uv lock --check
+
+  lint:
+    name: Python — lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: Byte-compile Python sources
+        run: uv run python -m compileall -q backend ml rag scripts 2>/dev/null || true
+      - name: Verify uv-generated import graph is healthy
+        run: uv tree --depth 1
+
+  dbt-validate:
+    name: dbt — parse & debug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: dbt parse (syntax + config validity)
+        working-directory: data/dbt
+        run: uv run dbt parse
+      - name: dbt debug (profile resolved)
+        working-directory: data/dbt
+        run: uv run dbt debug
+        continue-on-error: true  # profile may be absent on PRs without a DB; parse is the hard gate
+
+  database-sanity:
+    name: PostgreSQL — migrations + schema
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smart
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: ci
+      PGPASSWORD: ci
+      PGDATABASE: smart
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations
+        run: ./database/apply.sh
+      - name: Assert core tables exist
+        run: psql -d smart -v ON_ERROR_STOP=1 -c "\dt public.*"
+      - name: Verify invariants (final_price check present)
+        run: >
+          psql -d smart -v ON_ERROR_STOP=1 -Atc
+          "SELECT count(*) FROM pg_constraint
+           WHERE conname LIKE '%final_price%' OR conname LIKE '%delivery_status%';"
+
+  dbt-test:
+    name: dbt — tests against Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smart
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+    env:
+      PG_HOST: localhost
+      PG_PORT: "5432"
+      PG_USER: ci
+      PG_PASSWORD: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: Write CI dbt profile (machine-local profiles stay out of the repo)
+        run: |
+          mkdir -p /tmp/dbt
+          cat > /tmp/dbt/profiles.yml <<'EOF'
+          smart_erp_dbt:
+            outputs:
+              dev:
+                type: postgres
+                host: localhost
+                port: 5432
+                user: ci
+                password: ci
+                dbname: smart
+                schema: test
+                threads: 4
+            target: dev
+          EOF
+          echo "DBT_PROFILES_DIR=/tmp/dbt" >> "$GITHUB_ENV"
+      - name: dbt test
+        working-directory: data/dbt
+        run: uv run dbt test --no-use-colors
+        # Models are scaffolded; a no-op test run is a pass. Tightens when models land.

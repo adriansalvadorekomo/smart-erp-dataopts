@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB" />
   <img src="https://img.shields.io/badge/Airflow-017CEE?style=flat&logo=apacheairflow&logoColor=white" />
   <img src="https://img.shields.io/badge/MLflow-0194E2?style=flat&logo=mlflow&logoColor=white" />
+  <img src="https://github.com/adriansalvadorekomo/smart-erp-dataopts/actions/workflows/ci.yml/badge.svg" />
 </p>
 
 ---
@@ -98,6 +99,12 @@ smart-erp/
 ├── rag/                 # [9] Embeddings + LLM chat over ERP data
 └── infra/               # [10] Dockerfiles + deploy configs
 ```
+
+## Docs
+
+- **Business model & data contract** — [`docs/business-model.md`](docs/business-model.md) (single source of truth for Phases 2–9)
+- **Branching & CI/CD** — [`docs/branching-strategy.md`](docs/branching-strategy.md) (Trunk-Based Development, GitHub Actions pipeline)
+- **Database** — [`database/README.md`](database/README.md) (migrations, invariants, apply)
 
 ---
 
