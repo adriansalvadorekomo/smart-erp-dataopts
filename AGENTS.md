@@ -2,7 +2,7 @@
 
 ## Repo state
 
-Early-stage scaffold of a 10-phase DataOps ERP (e-commerce marketplace, India, INR ₹). **Implemented:** Phase 1 business model (`docs/business-model.md`), Phase 2 PostgreSQL DDL (`database/migrations/`), and dbt project scaffold (`data/dbt/`). `backend/`, `frontend/`, `ml/`, `rag/`, `bi/`, `infra/`, `scripts/` are empty placeholders (.gitkeep only) — do not assume they run or contain code.
+Early-stage scaffold of a 10-phase DataOps ERP (e-commerce marketplace, India, INR ₹). **Implemented:** Phase 1 business model (`docs/business-model.md`), Phase 2 PostgreSQL DDL (`database/migrations/`), Phase 3 ingestion + acceptance (`scripts/seed/`), and dbt project scaffold (`data/dbt/`). `backend/`, `frontend/`, `ml/`, `rag/`, `bi/`, `infra/` are empty placeholders (.gitkeep only) — do not assume they run or contain code.
 
 ## Tooling
 
@@ -18,9 +18,9 @@ Early-stage scaffold of a 10-phase DataOps ERP (e-commerce marketplace, India, I
 ## Domain contract
 
 - **`docs/business-model.md` is the single source of truth** for Phases 2–9 (schemas, KPIs, money flow, row counts). If data and doc disagree, the doc is wrong — fix it there first, then propagate.
-- Currency is **INR (₹)** throughout; 6 core tables: `customers`, `sellers`, `products`, `inventory`, `orders`, `order_item.opencode/skills/s`.
+- Currency is **INR (₹)** throughout; 6 core tables: `customers`, `sellers`, `products`, `inventory`, `orders`, `order_items`.
 - Key invariants to preserve:
-  - `final_price = unit_price × quantity × (1 − discount_pct/100)` (enforced by CHECK).
+  - `final_price = unit_price × quantity × (1 − discount_pct/100)` (enforced by CHECK). **Tolerance is ±₹5.00, not ₹0.01** — the source CSV round-trips up to ~₹3.99 from higher precision; see `scripts/seed/README.md`.
   - `orders.delivery_status` lifecycle: `IN TRANSIT → {DELIVERED, DELAYED, RETURNED}`; terminal states immutable.
   - No COGS in source; margin uses estimated `unit_cost = 0.65 × unit_price` — always label margin figures "estimated".
 - Reference row counts: 1,000,000 orders; 603,815 customers; 9,000 sellers; 89,999 products.

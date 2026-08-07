@@ -53,7 +53,7 @@
 |-------|-----------|--------|
 | 1 | **Business Model** — multi-seller marketplace (India, INR), KPIs, money flow — [docs/business-model.md](docs/business-model.md) | 🟢 Done |
 | 2 | **Database** — PostgreSQL with 6 core tables + `raw`/`staging` — [database/](database/) | 🟢 Done |
-| 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟡 Next |
+| 3 | **Seed Data** — Ingest 1M-row dataset (CSV → `raw` → `staging` → 6 tables, §6 acceptance checks, idempotent) — [scripts/seed/README.md](scripts/seed/README.md) | 🟢 Done |
 | 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟡 Planned |
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
 | 6 | **Data Pipeline** — PostgreSQL → Airbyte → dbt (staging/intermediate/marts) → Airflow orchestration | 🟢 Scaffolded |
@@ -85,9 +85,9 @@
 
 ```
 smart-erp/
-├── docs/                # [1] Business model — KPIs, money flow, domain definitions
+├── docs/                # [1] Business model, branching & verification guides
 ├── database/            # [2] PostgreSQL schema + versioned migrations (apply.sh)
-├── scripts/seed/        # [3] Dataset ingestion (CSV → raw → normalized, validated)
+├── scripts/seed/        # [3] Ingest + acceptance (ingest.py / acceptance.py)
 ├── backend/app/         # [4] FastAPI — api/ core/ models/ schemas/ services/
 ├── frontend/            # [5] React (Vite) + TanStack Query + shadcn/ui
 ├── data/
@@ -104,7 +104,9 @@ smart-erp/
 
 - **Business model & data contract** — [`docs/business-model.md`](docs/business-model.md) (single source of truth for Phases 2–9)
 - **Branching & CI/CD** — [`docs/branching-strategy.md`](docs/branching-strategy.md) (Trunk-Based Development, GitHub Actions pipeline)
+- **Verify each phase** — [`docs/verification.md`](docs/verification.md) (copy-paste checks for phases 1–10)
 - **Database** — [`database/README.md`](database/README.md) (migrations, invariants, apply)
+- **Ingestion** — [`scripts/seed/README.md`](scripts/seed/README.md) (3-stage pipeline, idempotency, checks)
 
 ---
 

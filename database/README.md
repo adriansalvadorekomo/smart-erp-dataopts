@@ -29,7 +29,7 @@ Applied in filename order. `002` drops/recreates core tables (early-scaffold ful
 
 ### Invariants enforced in DDL
 
-- `order_items.final_price ≈ unit_price × quantity × (1 − discount_pct/100)` (± ₹0.01)
+- `order_items.final_price ≈ unit_price × quantity × (1 − discount_pct/100)` (± ₹5.00; source round-trip max ≈ ₹3.99)
 - `orders.delivery_status ∈ {IN TRANSIT, DELIVERED, DELAYED, RETURNED}`
 - `payment_method` / `device` / product `category` restricted to validated source sets
 - `inventory (product_id, snapshot_date)` UNIQUE (idempotent re-load)
