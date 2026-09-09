@@ -9,7 +9,7 @@ variable "catalog_name" {
 variable "job_path_prefix" {
   description = "Repos path prefix where lakehouse code is checked out in the workspace."
   type        = string
-  default     = "/Repos/smart-erp"
+  default     = "/Repos/larrymclarens@gmail.com/smart-erp"
 }
 
 variable "databricks_host" {

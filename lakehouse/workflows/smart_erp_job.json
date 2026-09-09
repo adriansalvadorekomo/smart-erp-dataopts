@@ -8,7 +8,7 @@
       "task_key": "bronze_ingest",
       "description": "Snapshot staging.purchases (JDBC, off-peak) → append bronze.raw_purchases with _ingest_ts/_source. Idempotent via purchase_date watermark.",
       "notebook_task": {
-        "notebook_path": "/Repos/smart-erp/lakehouse/src/bronze/ingest",
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/src/bronze/ingest",
         "base_parameters": {
           "catalog": "{{job.parameters.catalog}}",
           "source": "postgres"
@@ -20,7 +20,7 @@
       "description": "Bronze → Silver: 6 entities, enums normalized, business grouping in one place. Depends on bronze_ingest.",
       "depends_on": [{ "task_key": "bronze_ingest" }],
       "notebook_task": {
-        "notebook_path": "/Repos/smart-erp/lakehouse/src/silver/transform",
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/src/silver/transform",
         "base_parameters": {
           "catalog": "{{job.parameters.catalog}}"
         }
@@ -31,7 +31,7 @@
       "description": "Fail-fast DQ gate R1–R9 (quality/rules.py). Blocks gold_build on any violation.",
       "depends_on": [{ "task_key": "silver_build" }],
       "notebook_task": {
-        "notebook_path": "/Repos/smart-erp/lakehouse/src/quality/runner",
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/src/quality/runner",
         "base_parameters": {
           "catalog": "{{job.parameters.catalog}}"
         }
@@ -42,7 +42,7 @@
       "description": "Silver → Gold star schema (fact_sales, dims, sales_daily, customer_360, inventory_kpis). Depends on dq_gate.",
       "depends_on": [{ "task_key": "dq_gate" }],
       "notebook_task": {
-        "notebook_path": "/Repos/smart-erp/lakehouse/src/gold/models",
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/src/gold/models",
         "base_parameters": {
           "catalog": "{{job.parameters.catalog}}"
         }
@@ -53,7 +53,7 @@
       "description": "Refresh Databricks SQL dashboards/queries in lakehouse/sql/gold/. Depends on gold_build.",
       "depends_on": [{ "task_key": "gold_build" }],
       "sql_task": {
-        "file": { "path": "/Repos/smart-erp/lakehouse/sql/gold/sales_daily.sql" }
+        "file": { "path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/sql/gold/sales_daily.sql" }
       }
     }
   ],
