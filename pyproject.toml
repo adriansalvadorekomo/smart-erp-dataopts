@@ -9,3 +9,10 @@ dependencies = [
     # Cluster/runtime deps (pyspark, delta-spark, mlflow, databricks-connect) are
     # introduced with the Phase-8 backfill/training increment — not ahead of need.
 ]
+
+# Workspace ops (not app runtime): short Python equivalents of the REST calls
+# in docs/databricks-workspace.md. Install: uv sync --group ops
+[dependency-groups]
+ops = [
+    "databricks-sdk>=0.40",
+]
