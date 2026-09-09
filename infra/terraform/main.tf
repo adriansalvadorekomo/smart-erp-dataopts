@@ -55,7 +55,7 @@ resource "databricks_job" "medallion" {
     task_key        = "bronze_ingest"
     environment_key = "serverless"
     notebook_task {
-      notebook_path   = "${var.job_path_prefix}/lakehouse/src/bronze/ingest"
+      notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/01_bronze_backfill"
       base_parameters = { catalog = var.catalog_name, source = "postgres" }
     }
   }
@@ -65,7 +65,7 @@ resource "databricks_job" "medallion" {
     environment_key = "serverless"
     depends_on { task_key = "bronze_ingest" }
     notebook_task {
-      notebook_path   = "${var.job_path_prefix}/lakehouse/src/silver/transform"
+      notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/02_silver_build"
       base_parameters = { catalog = var.catalog_name }
     }
   }
@@ -75,7 +75,7 @@ resource "databricks_job" "medallion" {
     environment_key = "serverless"
     depends_on { task_key = "silver_build" }
     notebook_task {
-      notebook_path   = "${var.job_path_prefix}/lakehouse/src/quality/runner"
+      notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/03_dq_gate"
       base_parameters = { catalog = var.catalog_name }
     }
   }
@@ -85,7 +85,7 @@ resource "databricks_job" "medallion" {
     environment_key = "serverless"
     depends_on { task_key = "dq_gate" }
     notebook_task {
-      notebook_path   = "${var.job_path_prefix}/lakehouse/src/gold/models"
+      notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/04_gold_build"
       base_parameters = { catalog = var.catalog_name }
     }
   }
