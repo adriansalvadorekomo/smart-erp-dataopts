@@ -27,6 +27,16 @@ resource "databricks_schema" "gold" {
   comment      = "Business-ready analytical models (KPI matrix: docs/lakehouse.md §7)."
 }
 
+# Raw CSV landing (sample-first: the workspace cannot reach laptop Postgres,
+# so backfill reads CSV from here; production enterprise uses a JDBC snapshot).
+resource "databricks_volume" "landing" {
+  catalog_name = var.catalog_name
+  schema_name  = databricks_schema.bronze.name
+  name         = "landing"
+  volume_type  = "MANAGED"
+  comment      = "Raw CSV landing (sample-first; production: Postgres snapshot)."
+}
+
 resource "databricks_job" "medallion" {
   name                    = "smart-erp-medallion"
   description             = "PostgreSQL → Bronze → Silver → DQ gate → Gold → SQL refresh."
