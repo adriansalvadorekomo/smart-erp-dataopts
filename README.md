@@ -6,12 +6,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/dbt-1.11-FF694B?style=flat&logo=dbt&logoColor=white" />
+  <img src="https://img.shields.io/badge/Databricks-FF3621?style=flat&logo=databricks&logoColor=white" />
+  <img src="https://img.shields.io/badge/Delta_Lake-00ADD8?style=flat&logo=delta&logoColor=white" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white" />
   <img src="https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB" />
-  <img src="https://img.shields.io/badge/Airflow-017CEE?style=flat&logo=apacheairflow&logoColor=white" />
   <img src="https://img.shields.io/badge/MLflow-0194E2?style=flat&logo=mlflow&logoColor=white" />
+  <img src="https://img.shields.io/badge/Terraform-7B42BC?style=flat&logo=terraform&logoColor=white" />
   <img src="https://github.com/adriansalvadorekomo/smart-erp-dataopts/actions/workflows/ci.yml/badge.svg" />
 </p>
 
@@ -24,26 +25,35 @@
 │                    SMART ERP SYSTEM                        │
 │                                                           │
 │  [1] Business Model ──→ [2] DB ──→ [3] Seed Data          │
+│        (PostgreSQL OLTP: customers, sellers, products,    │
+│         inventory, orders, order_items — Phase 4 writes)  │
 │                                    │                       │
 │                                    ▼                       │
 │                         [4] Backend (FastAPI)             │
 │                                    │                       │
 │                                    ▼                       │
 │                         [5] Web App (React)               │
-│                                    │                       │
-│              ┌─────────────────────┘                       │
-│              ▼                                             │
-│       [6] Pipeline: PostgreSQL → Airbyte → dbt → Airflow   │
+│                                                           │
+│       [6] Lakehouse (Databricks, Free Edition):           │
 │              │                                             │
-│              ├──→ [7] BI (Metabase / Power BI)            │
-│              ├──→ [8] ML (sales pred., churn classif.)    │
-│              └──→ [9] AI / RAG (chat over data)           │
+│              PostgreSQL ──snapshot──► Bronze (raw Delta)  │
+│                                           │               │
+│                                     Silver (clean Delta)  │
+│                                      ──DQ gate R1–R9──    │
+│                                           │               │
+│                                      Gold (marts, Delta)  │
+│              │                                             │
+│              ├──→ [7] BI (Databricks SQL over Gold)       │
+│              ├──→ [8] ML (XGBoost/churn, MLflow-native)   │
+│              └──→ [9] AI (Genie/RAG over governed Gold)   │
 │                                                           │
 │       [10] Deploy + Demo ◀────────────────────────────── │
 └─────────────────────────────────────────────────────────┘
 ```
 
-*Every phase depends on the one before it. DataOps guarantees each layer feeds the next without friction.*
+*PostgreSQL serves transactions; Databricks serves analytics. Bronze preserves
+raw history, Silver standardizes entities, Gold serves KPIs. Full contract:
+[`docs/lakehouse.md`](docs/lakehouse.md), decisions: [`docs/decisions.md`](docs/decisions.md).*
 
 ---
 
@@ -56,11 +66,11 @@
 | 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟡 Next |
 | 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟡 Planned |
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
-| 6 | **Data Pipeline** — PostgreSQL → Airbyte → dbt (staging/intermediate/marts) → Airflow orchestration | 🟢 Scaffolded |
-| 7 | **BI** — Metabase / Power BI dashboards (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
-| 8 | **ML** — Sales prediction (XGBoost) + customer churn (RandomForest), tracked with MLflow | 🟡 Planned |
-| 9 | **AI / RAG** — Natural language chat over ERP data using embeddings + LLM | 🟡 Planned |
-| 10 | **Deploy + Demo** — Railway (backend), Vercel (frontend), Supabase (DB), Astronomer (Airflow) | 🟡 Planned |
+| 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟡 Skeleton |
+| 7 | **BI** — Databricks SQL over Gold (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
+| 8 | **ML** — Return propensity + customer churn (scikit-learn/XGBoost), MLflow-native tracking | 🟡 Planned |
+| 9 | **AI** — Grounded assistant over governed Gold (Genie / SQL-first; no generic chatbot) | 🟡 Planned |
+| 10 | **Deploy + Demo** — Terraform (workspace assets) + Docker Compose (local Postgres) | 🟡 Planned |
 
 ---
 
@@ -68,16 +78,18 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **Database** | PostgreSQL |
+| **OLTP Database** | PostgreSQL (transactions, CHECKs, lifecycle contract) |
+| **Data Platform** | Databricks Free Edition · Delta Lake · Unity Catalog · PySpark · Databricks SQL · Workflows |
+| **Data Architecture** | Medallion: Bronze → Silver → DQ gate → Gold |
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
 | **Frontend** | React (Vite), TanStack Query, shadcn/ui |
-| **ETL / ELT** | Airbyte, dbt-core, dbt-postgres |
-| **Orchestration** | Apache Airflow |
-| **BI** | Metabase, Power BI |
-| **ML / MLOps** | scikit-learn, XGBoost, MLflow |
-| **AI / RAG** | LangChain / sentence-transformers, pgvector, GPT-4o / Claude |
-| **Infrastructure** | Docker, Docker Compose |
+| **ML / MLOps** | scikit-learn, XGBoost, MLflow (Databricks-native) |
+| **AI** | Genie / SQL-grounded assistant over governed Gold (vector search only if justified) |
+| **Infrastructure** | Terraform (workspace assets), Docker Compose (local Postgres) |
 | **Package Manager** | uv |
+
+> Retired: Airbyte, dbt, Airflow, Metabase-as-core, pgvector-as-sidecar — see
+> [docs/decisions.md](docs/decisions.md) (ADRs 1–7) for why. `bi/` stays as an export folder.
 
 ---
 
@@ -90,21 +102,24 @@ smart-erp/
 ├── scripts/seed/        # [3] Dataset ingestion (CSV → raw → normalized, validated)
 ├── backend/app/         # [4] FastAPI — api/ core/ models/ schemas/ services/
 ├── frontend/            # [5] React (Vite) + TanStack Query + shadcn/ui
+├── lakehouse/           # [6] Databricks medallion: src/{bronze,silver,gold,quality} workflows/ sql/gold/ tests/
 ├── data/
-│   ├── dbt/             # [6] dbt project — models/{staging,intermediate,marts}
-│   ├── airbyte/         # [6] Airbyte connection configs
-│   └── airflow/dags/    # [6] Airflow orchestration DAGs
-├── bi/                  # [7] Metabase / Power BI dashboards
-├── ml/                  # [8] Sales prediction + churn (MLflow-tracked)
-├── rag/                 # [9] Embeddings + LLM chat over ERP data
-└── infra/               # [10] Dockerfiles + deploy configs
+│   └── amazon-e-commerce/ # source CSV (git-ignored, 1M rows)
+├── bi/                  # [7] Dashboard exports (Databricks SQL is the core BI layer)
+├── ml/                  # [8] Return propensity + churn (MLflow-native)
+├── rag/                 # [9] Grounded assistant over governed Gold
+└── infra/               # [10] Terraform (workspace) + docker-compose (local Postgres)
 ```
 
 ## Docs
 
 - **Business model & data contract** — [`docs/business-model.md`](docs/business-model.md) (single source of truth for Phases 2–9)
+- **Lakehouse architecture** — [`docs/lakehouse.md`](docs/lakehouse.md) (Bronze/Silver/Gold, flows, KPI→Gold matrix)
+- **Decision log** — [`docs/decisions.md`](docs/decisions.md) (why Databricks, why medallion, why no dbt/Airflow/…)
+- **Free Edition limits** — [`docs/databricks-free-edition.md`](docs/databricks-free-edition.md) (dev/prod equivalence)
 - **Branching & CI/CD** — [`docs/branching-strategy.md`](docs/branching-strategy.md) (Trunk-Based Development, GitHub Actions pipeline)
 - **Database** — [`database/README.md`](database/README.md) (migrations, invariants, apply)
+- **Lakehouse package** — [`lakehouse/README.md`](lakehouse/README.md) (layout, verify commands)
 
 ---
 
@@ -120,11 +135,21 @@ uv venv
 source .venv/bin/activate
 uv sync
 
-# Run dbt (development)
-cd data/dbt
-dbt debug
-dbt run
+# Verify the lakehouse contracts (no DB, no cluster needed)
+python -m unittest discover -s lakehouse/tests -v
+python lakehouse/local_run.py
+
+# OLTP: apply migrations, then ingest (needs PostgreSQL + the 1M CSV)
+./database/apply.sh
+python3 scripts/seed/ingest.py && python3 scripts/seed/acceptance.py
+
+# Workspace (Free Edition): validate infra, deploy job manually
+cd infra/terraform && terraform init -backend=false && terraform validate
 ```
+
+> Local Postgres for development: `docker compose -f infra/docker-compose.yml up -d`.
+> Databricks connection: `DATABRICKS_HOST` + `DATABRICKS_TOKEN` from env —
+> see [`docs/databricks-free-edition.md`](docs/databricks-free-edition.md). Never commit secrets.
 
 > **Note:** This project is in early development. Each phase is being built incrementally following the methodology outlined in the [project documentation](https://github.com/adriansalvadorekomo/smart-erp-dataopts).
 
@@ -144,14 +169,15 @@ Every phase follows these three rules:
 
 ## Why This Matters
 
-This project demonstrates a complete **Data Engineering & BI workflow**:
+This project demonstrates a complete **Data Engineering & Lakehouse workflow**:
 
-- **Star-schema dimensional modeling** in PostgreSQL
-- **Version-controlled data transformations** with dbt
-- **Pipeline orchestration** with Apache Airflow
-- **ML model lifecycle** tracking with MLflow
-- **Self-service analytics** via BI dashboards
-- **Natural language interfaces** through RAG
+- **OLTP modeling** in PostgreSQL (6 tables, CHECKs, lifecycle contract)
+- **Medallion architecture** on Databricks (Bronze → Silver → DQ gate → Gold)
+- **Data quality as code** (rules R1–R9, fail-fast before Gold)
+- **Pipeline-as-software** (versioned, tested, reproducible, observable)
+- **ML model lifecycle** tracking with native MLflow
+- **Governed AI** — grounded answers over Gold, never a chatbot bypassing the platform
+- **Infrastructure as code** with Terraform; CI-gated Trunk-Based Development
 
 ---
 

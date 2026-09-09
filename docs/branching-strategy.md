@@ -55,8 +55,8 @@ GitFlow's `develop` ⇄ `main` split and multi-hop `release`/`hotfix` branches a
 ```
 feature branch ──PR──► main ──tag──► v<semver>
      │                     │                │
- CI on PR & push ·      merge =      CI on tag builds, runs
- dbt test/deps           new RC      migrations, publishes
+  CI on PR & push ·      merge =      CI on tag builds, runs
+  lakehouse tests         new RC      migrations, publishes
      │                     │                │
  PR requires:         main passes       tag is deployable
   green CI + review    all checks        artifact
@@ -78,7 +78,7 @@ Two **GitHub Actions** workflows enforce and automate the strategy:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `.github/workflows/ci.yml` | PRs to `main` + push to `main` + cron | Validate every commit: uv lock, lint, dbt parse, dbt test, DB migration smoke, seed acceptance |
+| `.github/workflows/ci.yml` | PRs to `main` + push to `main` + cron | Validate every commit: uv lock, lint, lakehouse tests, Gold SQL sanity, terraform validate, DB migration smoke |
 | `.github/workflows/release.yml` | tag `v*` | Build & publish the deployable artifact from a `main` snapshot |
 
 **Branch protection** (enable in GitHub repo settings / `main`):
@@ -98,17 +98,18 @@ Runs on every PR and every push to `main`. Failure blocks the merge.
 |---|---|---|
 | `lockfile` | `uv lock --check` (lockfile matches `pyproject.toml`) | dependency drift |
 | `lint` | Python lint/format gate (stage clean) | offending code |
-| `dbt-validate` | `uv run dbt parse` + `dbt debug` from `data/dbt` | broken dbt project |
-| `dbt-test` | spin a Postgres service container, apply migrations, `dbt test` | failing data tests |
-| `schema-sanity` | apply `database/apply.sh` against Postgres, assert core tables exist | broken migrations |
-| `seed-acceptance` *(fut.)* | run §6 acceptance checks at 1M rows | contract violations |
+| `lakehouse-test` | stdlib unittest over lakehouse pure logic + `local_run.py` + Workflows JSON validation (no cluster, no DB) | failing contracts |
+| `sql-parse` | Gold SQL sanity (silver-sourced, margin labelled estimated) | leaking OLTP/raw reads |
+| `terraform-validate` | `terraform init -backend=false && terraform validate` in `infra/terraform` | invalid workspace assets |
+| `database-sanity` | apply `database/apply.sh` against Postgres, assert core tables exist | broken migrations |
+| `seed-acceptance-note` | doc-consistency guard until `scripts/seed/` merges (full 1M-row acceptance runs on its own branch) | contract drift |
 
-> dbt profile `smart_erp_dbt` is **not** in the repo (machine-local, `~/.dbt/profiles.yml`). CI injects a profile via the `DBT_PROFILES_DIR` / env override so pipelines never depend on a developer laptop.
+> Machine-local credentials (Databricks token, PG passwords) are **never** in the repo and CI never deploys to the workspace — Free Edition deploy stays a manual `workflow_dispatch`. See `docs/databricks-free-edition.md`.
 
 ### Environment targets
 
-- **dev / PR:** every PR runs the full matrix against a throwaway Postgres container. Nothing is deployed.
-- **staging:** next `main` merge is promoted; dbt builds fully with all data.
+- **dev / PR:** every PR runs the full matrix (lakehouse tests need no DB; only `database-sanity` uses a throwaway Postgres container). Nothing is deployed.
+- **staging:** next `main` merge is promoted; the Workflows job runs fully with all data.
 - **prod:** a released `v*` tag is `what to be deployed` after staging sign-off.
 
 > Environment *deploy* wiring arrives in Phase 10 (infra). Get the validation gate right now; deploys drop in at the tag hook.
@@ -133,15 +134,15 @@ This avoids dragging unrelated in-flight work from `main` into a hotfix.
 | Phase | Where branches touch | CI relevance |
 |---|---|---|
 | 1 Business model | `docs/` | — (doc) |
-| 2 Database | `database/migrations/` | `database-sanity`, `dbt-applies` |
-| 3 Seed / ingestion | `scripts/seed/`, `data/` | `seed-acceptance` |
+| 2 Database | `database/migrations/` | `database-sanity` |
+| 3 Seed / ingestion | `scripts/seed/`, `data/` | `seed-acceptance` (own branch until merged) |
 | 4 Backend | `backend/` | lint, tests |
 | 5 Frontend | `frontend/` | build, lint |
-| 6 Pipeline | `data/dbt/`, `data/airflow/`, `data/airbyte/` | `dbt-parse`, `dbt-test` |
-| 7 BI | `bi/` | — |
-| 8 ML | `ml/` | model CI, pytest |
-| 9 RAG | `rag/` | pytest |
-| 10 Deploy | `infra/`, `release.yml` | deploy gate, tag → prod |
+| 6 Data platform | `lakehouse/` (bronze/silver/gold/quality/workflows/sql) | `lakehouse-test`, `sql-parse` |
+| 7 BI | `bi/` (Databricks SQL core) | — |
+| 8 ML | `ml/` | model CI, unittest |
+| 9 AI | `rag/` (governed Gold) | unittest |
+| 10 Deploy | `infra/`, `release.yml` | `terraform-validate`, tag → prod |
 
 ---
 

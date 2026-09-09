@@ -1,0 +1,25 @@
+# Local development stack — Postgres (OLTP) only.
+# Databricks itself is never containerized; the lakehouse runs on the
+# Free Edition workspace, logic is verified locally via unittest + local_run.py.
+# Usage: docker compose -f infra/docker-compose.yml up -d
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: smart-erp-postgres
+    environment:
+      POSTGRES_USER: ${PGUSER:-magrey}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-pg}
+      POSTGRES_DB: ${PGDATABASE:-smart}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

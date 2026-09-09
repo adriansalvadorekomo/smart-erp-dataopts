@@ -9,10 +9,18 @@ wheels/
 # Virtual environments
 .venv
 
-# dbt
+# Build / tool output
 logs/
 target/
 dbt_packages/
+
+# Local lakehouse scratch (Delta files) — prod equivalent is UC managed storage
+lakehouse/delta/
+
+# Terraform providers / state (local skeleton uses no remote backend)
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.backup
 
 # Raw datasets (large files — never commit)
 data/amazon-e-commerce/*.csv
