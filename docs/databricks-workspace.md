@@ -1,9 +1,8 @@
-# Workspace commands — the short way (SDK) instead of curl
+# Workspace commands — CLI or SDK instead of curl
 
 > Auth once via env (`DATABRICKS_HOST` + `DATABRICKS_TOKEN`), then one-liners.
-> Install: `uv sync --group ops`. The Databricks CLI binary (`databricks ...`)
-> is the equivalent outside Python — same auth, same API; its subcommands are
-> listed next to each SDK call. Never commit the token.
+> Install the CLI: `mise use -g databricks-cli` (v1.15.0 verified). Python
+> alternative: `uv sync --group ops` (`databricks-sdk`). Never commit the token.
 
 ```bash
 export DATABRICKS_HOST="https://dbc-cba3c27a-ade0.cloud.databricks.com"
@@ -15,7 +14,7 @@ export DATABRICKS_TOKEN="YOUR_TOKEN"
 | Who am I | `WorkspaceClient().current_user.me().user_name` | `databricks auth whoami` / `databricks current-user me` |
 | List catalogs | `w.catalogs.list()` | `databricks catalogs list` |
 | List schemas | `w.schemas.list("workspace")` | `databricks schemas list workspace` |
-| List volume files | `w.files.list_directory_contents("/Volumes/workspace/bronze/landing")` | `databricks fs ls dbfs:/Volumes/workspace/bronze/landing` |
+| List volume files | `w.files.list_directory_contents("/Volumes/workspace/bronze/landing")` | `databricks fs ls dbfs:/Volumes/workspace/bronze/landing/` (note the `dbfs:` prefix) |
 | Upload CSV | `open(...,'rb')` + `w.files.upload("/Volumes/.../sample_10k.csv", f, overwrite=True)` | `databricks fs cp sample_10k.csv dbfs:/Volumes/workspace/bronze/landing/ --overwrite` |
 | Run job | `w.jobs.run_now(228018114268524).run_id` | `databricks jobs run-now 228018114268524` |
 | Check run | `w.jobs.get_run(run_id).state` | `databricks runs get <run_id>` |
