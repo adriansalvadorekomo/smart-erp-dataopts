@@ -22,7 +22,7 @@ jobs:
       - name: Install project
         run: uv sync --frozen
       - name: Validate project metadata at tag
-        run: uv lock --check && uv run dbt parse --project-dir data/dbt
+        run: uv lock --check && uv run python -m unittest discover -s lakehouse/tests
       - name: Draft GitHub Release
         run: |
           gh release create "$GITHUB_REF_NAME" \

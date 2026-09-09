@@ -37,8 +37,8 @@ jobs:
       - name: Verify uv-generated import graph is healthy
         run: uv tree --depth 1
 
-  dbt-validate:
-    name: dbt — parse & debug
+  lakehouse-test:
+    name: Lakehouse — unit tests (no cluster)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,13 +48,38 @@ jobs:
           enable-cache: true
       - name: Install project
         run: uv sync --frozen
-      - name: dbt parse (syntax + config validity)
-        working-directory: data/dbt
-        run: uv run dbt parse
-      - name: dbt debug (profile resolved)
-        working-directory: data/dbt
-        run: uv run dbt debug
-        continue-on-error: true  # profile may be absent on PRs without a DB; parse is the hard gate
+      - name: Run lakehouse unit tests (stdlib unittest)
+        run: uv run python -m unittest discover -s lakehouse/tests -v
+      - name: Local end-to-end mirror (bronze → silver → DQ → gold)
+        run: uv run python lakehouse/local_run.py
+      - name: Validate Workflows job definition
+        run: uv run python -c "import json; d=json.load(open('lakehouse/workflows/smart_erp_job.json')); assert [t['task_key'] for t in d['tasks']]==['bronze_ingest','silver_build','dq_gate','gold_build','sql_refresh'], 'task order drift'"
+
+  sql-parse:
+    name: Lakehouse SQL — Gold models sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert Gold SQL models stay inside the medallion (never OLTP/raw)
+        run: |
+          ! grep -ri 'public\.\|raw\.purchases\|staging\.' lakehouse/sql/gold/ || { echo "Gold must not read OLTP/raw/staging directly"; exit 1; }
+          for f in lakehouse/sql/gold/*.sql; do
+            grep -q 'silver\.\|gold\.' "$f" || { echo "$f reads outside the medallion"; exit 1; }
+          done
+          echo "Gold SQL sources OK:"; ls lakehouse/sql/gold/
+      - name: Assert estimated-margin labelling (no silent COGS claims)
+        run: |
+          grep -l 'estimated_line_margin' lakehouse/sql/gold/fact_sales.sql
+
+  terraform-validate:
+    name: Terraform — validate workspace assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform validate (no backend, no apply on Free Edition CI)
+        working-directory: infra/terraform
+        run: terraform init -backend=false && terraform validate
 
   database-sanity:
     name: PostgreSQL — migrations + schema
@@ -91,53 +116,15 @@ jobs:
           "SELECT count(*) FROM pg_constraint
            WHERE conname LIKE '%final_price%' OR conname LIKE '%delivery_status%';"
 
-  dbt-test:
-    name: dbt — tests against Postgres
+  seed-acceptance-note:
+    name: Docs — seed acceptance lives on feat/3-ingestion until merged
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: smart
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ci"
-          --health-interval 10s
-    env:
-      PG_HOST: localhost
-      PG_PORT: "5432"
-      PG_USER: ci
-      PG_PASSWORD: ci
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          version: "0.5.x"
-          enable-cache: true
-      - name: Install project
-        run: uv sync --frozen
-      - name: Write CI dbt profile (machine-local profiles stay out of the repo)
+      - name: Assert OLTP contract docs stay consistent
         run: |
-          mkdir -p /tmp/dbt
-          cat > /tmp/dbt/profiles.yml <<'EOF'
-          smart_erp_dbt:
-            outputs:
-              dev:
-                type: postgres
-                host: localhost
-                port: 5432
-                user: ci
-                password: ci
-                dbname: smart
-                schema: test
-                threads: 4
-            target: dev
-          EOF
-          echo "DBT_PROFILES_DIR=/tmp/dbt" >> "$GITHUB_ENV"
-      - name: dbt test
-        working-directory: data/dbt
-        run: uv run dbt test --no-use-colors
-        # Models are scaffolded; a no-op test run is a pass. Tightens when models land.
+          grep -q 'final_price' docs/business-model.md
+          grep -q 'lakehouse' README.md
+          # Full 1M-row seed acceptance runs on the feat/3-ingestion line
+          # (scripts/seed/ is not on main yet); the lakehouse DQ rules R1–R9
+          # mirror its checks so the contract cannot drift (docs/lakehouse.md §7).

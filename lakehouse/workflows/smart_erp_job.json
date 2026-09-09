@@ -1,0 +1,69 @@
+{
+  "name": "smart-erp-medallion",
+  "description": "PostgreSQL OLTP → Bronze → Silver → (DQ gate) → Gold → SQL refresh. Source of task order: docs/lakehouse.md §5. Secrets via Databricks secret scopes / env — never in this file.",
+  "timeout_seconds": 3600,
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "bronze_ingest",
+      "description": "Snapshot staging.purchases (JDBC, off-peak) → append bronze.raw_purchases with _ingest_ts/_source. Idempotent via purchase_date watermark.",
+      "notebook_task": {
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/notebooks/01_bronze_backfill",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}",
+          "source": "postgres"
+        }
+      }
+    },
+    {
+      "task_key": "silver_build",
+      "description": "Bronze → Silver: 6 entities, enums normalized, business grouping in one place. Depends on bronze_ingest.",
+      "depends_on": [{ "task_key": "bronze_ingest" }],
+      "notebook_task": {
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/notebooks/02_silver_build",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        }
+      }
+    },
+    {
+      "task_key": "dq_gate",
+      "description": "Fail-fast DQ gate R1–R9 (quality/rules.py). Blocks gold_build on any violation.",
+      "depends_on": [{ "task_key": "silver_build" }],
+      "notebook_task": {
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/notebooks/03_dq_gate",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        }
+      }
+    },
+    {
+      "task_key": "gold_build",
+      "description": "Silver → Gold star schema (fact_sales, dims, sales_daily, customer_360, inventory_kpis). Depends on dq_gate.",
+      "depends_on": [{ "task_key": "dq_gate" }],
+      "notebook_task": {
+        "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/notebooks/04_gold_build",
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}"
+        }
+      }
+    },
+    {
+      "task_key": "sql_refresh",
+      "description": "Refresh Databricks SQL dashboards/queries in lakehouse/sql/gold/. Depends on gold_build.",
+      "depends_on": [{ "task_key": "gold_build" }],
+      "sql_task": {
+        "file": { "path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/sql/gold/sales_daily.sql" }
+      }
+    }
+  ],
+  "parameters": [
+    { "name": "catalog", "default": "workspace" }
+  ],
+  "environments": [
+    {
+      "environment_key": "serverless",
+      "spec": { "client": "serverless" }
+    }
+  ]
+}
