@@ -16,7 +16,7 @@
 
 | Capability | Use in Smart-ERP |
 |---|---|
-| Unity Catalog (single user catalog) | `smart_erp` catalog with `bronze` / `silver` / `gold` schemas |
+| Unity Catalog (built-in `workspace` catalog) | `bronze` / `silver` / `gold` schemas under `workspace` (new catalogs can't be created via API — `smart_erp` catalog is the production pattern, selected via `LAKEHOUSE_CATALOG`) |
 | Delta Lake + serverless compute (small) | Medallion batch at 1M rows — comfortably in range |
 | Workflows (limited concurrency) | `smart_erp_job.json`, `max_concurrent_runs: 1` |
 | Databricks SQL (warehouse + dashboards) | `lakehouse/sql/gold/` + Phase-7 dashboards |
@@ -48,6 +48,6 @@
 ```bash
 export DATABRICKS_HOST="https://dbc-cba3c27a-ade0.cloud.databricks.com"
 export DATABRICKS_TOKEN="<personal-access-token>"   # never commit; rotate regularly
-export LAKEHOUSE_CATALOG="smart_erp"
+export LAKEHOUSE_CATALOG="workspace"   # Free Edition default (Terraform-managed schemas)
 # databricks CLI / Terraform read these automatically
 ```

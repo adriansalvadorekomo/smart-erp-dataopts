@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · Diagram Design</p>
+    <h1>DataOps ERP System Architecture</h1>
+
+    <svg viewBox="0 0 1600 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="dataops-erp-architecture-title dataops-erp-architecture-desc">
+      <title id="dataops-erp-architecture-title">DataOps ERP System Architecture</title>
+      <desc id="dataops-erp-architecture-desc">High-level architecture showing data flow from ingestion through transformation to consumption in the DataOps ERP system.</desc>
+      <defs>
+        <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="0.9" fill="rgba(45,49,66,0.10)"/>
+        </pattern>
+        <marker id="arrow-muted" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+        <rect width="100%" height="100%" fill="url(#dots)" opacity="0.55"/>
+        <rect x="100" y="50" width="1500" height="400" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="820.0" y="54" width="60" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="850.0" y="64" fill="rgba(45,49,66,0.40)" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.14em">DATAOPS ERP SYSTEM</text>
+        <path d="M 340,132.0 H 442.0 Q 450.0,132.0 450.0,140.0 V 124.0 Q 450.0,132.0 450,132.0" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+        <path d="M 590,132.0 H 692.0 Q 700.0,132.0 700.0,140.0 V 124.0 Q 700.0,132.0 700,132.0" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+        <path d="M 840,132.0 H 942.0 Q 950.0,132.0 950.0,140.0 V 124.0 Q 950.0,132.0 950,132.0" fill="none" stroke="#eb6c36" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+        <path d="M 1090,132.0 H 1192.0 Q 1200.0,132.0 1200.0,140.0 V 124.0 Q 1200.0,132.0 1200,132.0" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+        <path d="M 1340,132.0 H 1442.0 Q 1450.0,132.0 1450.0,140.0 V 124.0 Q 1450.0,132.0 1450,132.0" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow-muted)"/>
+        <rect x="200" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="200" y="100" width="140" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="208" y="108" width="28" height="12" rx="2" fill="#4f5d750.12" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="222.0" y="116.0" fill="#2d3142" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">ING</text>
+        <text x="270.0" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">Ingestion</text>
+        <text x="270.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">Load CSV to PostgreSQL raw</text>
+        <rect x="450" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="450" y="100" width="140" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="458" y="108" width="28" height="12" rx="2" fill="#4f5d750.12" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="472.0" y="116.0" fill="#2d3142" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">DB</text>
+        <text x="520.0" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">Raw Schema</text>
+        <text x="520.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">customers, sellers, products, ...</text>
+        <rect x="700" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="700" y="100" width="140" height="64" rx="6" fill="#eb6c360.08" stroke="#eb6c36" stroke-width="1.2"/>
+        <rect x="708" y="108" width="28" height="12" rx="2" fill="#eb6c360.20" stroke="#eb6c36" stroke-width="0.8"/>
+        <text x="722.0" y="116.0" fill="#eb6c36" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">DBT</text>
+        <text x="770.0" y="136" fill="#eb6c36" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">dbt Transformation</text>
+        <text x="770.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">staging + marts models</text>
+        <rect x="950" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="950" y="100" width="140" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="958" y="108" width="28" height="12" rx="2" fill="#4f5d750.12" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="972.0" y="116.0" fill="#2d3142" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">DB</text>
+        <text x="1020.0" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">Marts Schema</text>
+        <text x="1020.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">facts and dimensions</text>
+        <rect x="1200" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="1200" y="100" width="140" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="1208" y="108" width="28" height="12" rx="2" fill="#4f5d750.12" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="1222.0" y="116.0" fill="#2d3142" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">TST</text>
+        <text x="1270.0" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">Acceptance Checks</text>
+        <text x="1270.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">validate row counts, constraints</text>
+        <rect x="1450" y="100" width="140" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="1450" y="100" width="140" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="1458" y="108" width="28" height="12" rx="2" fill="#4f5d750.12" stroke="#4f5d75" stroke-width="0.8"/>
+        <text x="1472.0" y="116.0" fill="#2d3142" font-size="7" font-family='Geist Mono', monospace text-anchor="middle" letter-spacing="0.08em">BI</text>
+        <text x="1520.0" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family='Geist', sans-serif text-anchor="middle">BI/Consumption</text>
+        <text x="1520.0" y="152" fill="#4f5d75" font-size="9" font-family='Geist Mono', monospace text-anchor="middle">reporting, dashboards</text>
+        <line x1="50" y1="550" x2="1550" y2="550" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="50" y="566" fill="#4f5d75" font-size="8" font-family='Geist Mono', monospace letter-spacing="0.14em">LEGEND</text>
+        <rect x="80" y="582" width="14" height="10" rx="2" fill="#eb6c360.08" stroke="#eb6c36" stroke-width="1"/>
+        <text x="100" y="591" fill="#4f5d75" font-size="8" font-family='Geist', sans-serif">Focal component</text>
+        <rect x="80" y="602" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="100" y="611" fill="#4f5d75" font-size="8" font-family='Geist', sans-serif">Standard component</text>
+        <rect x="80" y="622" width="14" height="10" rx="2" fill="#4f5d75" stroke="#4f5d75" stroke-width="1"/>
+        <text x="100" y="631" fill="#4f5d75" font-size="8" font-family='Geist', sans-serif">Standard handoff</text>
+        <rect x="80" y="642" width="14" height="10" rx="2" fill="#eb6c36" stroke="#eb6c36" stroke-width="1"/>
+        <text x="100" y="651" fill="#4f5d75" font-size="8" font-family='Geist', sans-serif">Focal handoff</text>
+
+    </svg>
+  </div>
+</body>
+</html>

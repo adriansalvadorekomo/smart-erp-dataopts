@@ -15,11 +15,13 @@ class LakehouseConfig:
     """Resolved lakehouse configuration.
 
     Unity Catalog three-level namespace: catalog.schema.table.
-    On Databricks Free Edition there is a single user-accessible catalog;
-    locally the same names map to a Delta root directory.
+    Free Edition cannot create catalogs via API, so the default catalog is the
+    workspace's built-in ``workspace`` catalog (schemas managed by Terraform);
+    a dedicated catalog (e.g. ``smart_erp``) is the production pattern, selected
+    via LAKEHOUSE_CATALOG. Community Edition sets LAKEHOUSE_USE_UC=false.
     """
 
-    catalog: str = field(default_factory=lambda: os.environ.get("LAKEHOUSE_CATALOG", "smart_erp"))
+    catalog: str = field(default_factory=lambda: os.environ.get("LAKEHOUSE_CATALOG", "workspace"))
     bronze_schema: str = "bronze"
     silver_schema: str = "silver"
     gold_schema: str = "gold"
@@ -50,7 +52,7 @@ class LakehouseConfig:
     def table(self, layer: str, name: str) -> str:
         """Fully-qualified table name.
 
-        Unity Catalog mode: ``smart_erp.silver.orders``.
+        Unity Catalog mode: ``workspace.silver.orders`` (Free Edition default).
         Community Edition (Hive Metastore): ``silver.orders``.
         """
         schemas = {"bronze": self.bronze_schema, "silver": self.silver_schema, "gold": self.gold_schema}

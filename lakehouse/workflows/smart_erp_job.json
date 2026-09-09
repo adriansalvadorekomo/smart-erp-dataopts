@@ -58,7 +58,7 @@
     }
   ],
   "parameters": [
-    { "name": "catalog", "default": "smart_erp" }
+    { "name": "catalog", "default": "workspace" }
   ],
   "environments": [
     {

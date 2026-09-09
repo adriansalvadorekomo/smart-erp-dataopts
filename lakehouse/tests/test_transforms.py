@@ -65,13 +65,13 @@ class TestConfig(unittest.TestCase):
     def test_table_unity_catalog(self):
         from lakehouse.src.common.config import LakehouseConfig
 
-        cfg = LakehouseConfig(catalog="smart_erp", use_uc=True)
-        self.assertEqual(cfg.table("silver", "orders"), "smart_erp.silver.orders")
+        cfg = LakehouseConfig(catalog="workspace", use_uc=True)
+        self.assertEqual(cfg.table("silver", "orders"), "workspace.silver.orders")
 
     def test_table_hive_fallback_community_edition(self):
         from lakehouse.src.common.config import LakehouseConfig
 
-        cfg = LakehouseConfig(catalog="smart_erp", use_uc=False)
+        cfg = LakehouseConfig(catalog="workspace", use_uc=False)
         self.assertEqual(cfg.table("silver", "orders"), "silver.orders")
         self.assertEqual(cfg.table("gold", "fact_sales"), "gold.fact_sales")
 

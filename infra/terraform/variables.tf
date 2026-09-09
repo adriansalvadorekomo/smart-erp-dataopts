@@ -1,9 +1,9 @@
 # All infrastructure configuration is externalized — no defaults carry secrets.
 
 variable "catalog_name" {
-  description = "Unity Catalog catalog for the lakehouse (Free Edition: single user catalog)."
+  description = "Unity Catalog catalog for the lakehouse. Free Edition cannot create new catalogs via API (no metastore storage root), so schemas live in the default 'workspace' catalog. Production enterprise uses a dedicated catalog (e.g. smart_erp) via LAKEHOUSE_CATALOG / TF_VAR_catalog_name."
   type        = string
-  default     = "smart_erp"
+  default     = "workspace"
 }
 
 variable "job_path_prefix" {
