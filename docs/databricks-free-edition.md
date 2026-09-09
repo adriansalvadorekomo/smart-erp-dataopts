@@ -43,7 +43,18 @@
 | Manual `workflow_dispatch` deploy | `databricks bundle deploy` from tags in CD |
 | Env-var secrets locally | Secret scopes + service principals |
 
-## Connecting a dev machine (no secrets in repo)
+## Live validation (10k-row sample, run 103219105703513 — SUCCESS)
+
+| Check | Result |
+|---|---|
+| Job `smart-erp-medallion` (bronze → silver → DQ → gold, serverless) | SUCCESS, all 4 tasks green |
+| `bronze.raw_purchases` / `silver.orders` / `silver.order_items` / `gold.fact_sales` | 10,000 rows each |
+| Sample revenue ₹99,415,946.09 | scales ×100 → ₹9.94B ≈ full baseline ₹9,938,876,985 ✓ |
+| Status split (sample) | IN TRANSIT 30.0% / DELIVERED 29.8% / DELAYED 29.7% / RETURNED 10.5% (≈ full proportions) |
+| Stock-critical products (sample) | 364 |
+| DQ gate R1–R9 | passed (Gold built) |
+
+Full 1M backfill replays the same job with the full CSV in the landing volume.
 
 ```bash
 export DATABRICKS_HOST="https://dbc-cba3c27a-ade0.cloud.databricks.com"
