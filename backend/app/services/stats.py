@@ -1,7 +1,23 @@
-"""Read-only aggregate stats for the dashboard (business-model §5 KPIs).
+"""Read-only aggregate stats — business questions, not just data readouts.
 
+Every function exists to answer a named business question (see comments).
 All queries hit indexed OLTP columns (orders.order_date/status, FK joins).
-No business rules here — pure aggregation over committed state.
+No business rules live here — pure aggregation over committed state.
+
+Business questions answered:
+  overview()           → "What is the state of the business right now?"
+  revenue_trend()      → "Is revenue growing or slowing?"
+  revenue_by_category()→ "Which categories drive revenue vs volume?"
+  sales_by_city()      → "Which cities are over/underperforming?"
+  category_trend()     → "Which categories are growing or declining?"
+  channel_mix()        → "Which payment/device channels drive orders?"
+  discount_bands()     → "Do heavy discounts correlate with more revenue?"
+  top_sellers()        → "Who are the top revenue generators?"
+  seller_performance() → "Which sellers have quality problems (high returns)?"
+  operations_breakdown() → "Where are delays and returns concentrated?"
+  shipping_return_correlation() → "Does faster shipping reduce returns?"
+  pareto_share()       → "How concentrated is our customer revenue?"
+  dq_checks()          → "Is the data platform healthy?"
 """
 from __future__ import annotations
 
@@ -212,3 +228,274 @@ def dq_checks(session: Session) -> list[dict]:
         {"rule": name, "violations": session.execute(text(sql)).scalar() or 0}
         for name, sql in checks
     ]
+
+
+# ─── NEW BUSINESS-ORIENTED ENDPOINTS ────────────────────────────────────────
+
+def sales_by_city(session: Session) -> list[dict]:
+    """Question: Which cities are over- or underperforming?
+    Returns revenue, order count, AOV, and return rate per city.
+    Cities with high orders but low AOV or high return rates are worth investigating.
+    """
+    rows = session.execute(
+        text("""
+            SELECT
+                o.ship_to_city                                     AS city,
+                COUNT(DISTINCT o.order_id)                         AS orders,
+                COALESCE(SUM(oi.final_price), 0)                   AS revenue,
+                COALESCE(SUM(oi.final_price), 0)
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS aov,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status IN ('DELIVERED','DELAYED')
+                    THEN o.order_id END), 0)                       AS delayed_rate
+            FROM public.orders o
+            JOIN public.order_items oi ON oi.order_id = o.order_id
+            GROUP BY o.ship_to_city
+            ORDER BY revenue DESC
+        """)
+    ).all()
+    return [
+        {
+            "city": r.city,
+            "orders": r.orders,
+            "revenue": float(r.revenue),
+            "aov": float(r.aov) if r.aov else 0.0,
+            "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+            "delayed_rate": float(r.delayed_rate) if r.delayed_rate else 0.0,
+        }
+        for r in rows
+    ]
+
+
+def category_trend(session: Session) -> list[dict]:
+    """Question: Which categories are growing or declining?
+    Returns monthly revenue per category — the browser computes growth direction.
+    Electronics dominates at 66% revenue; this shows if that concentration is changing.
+    """
+    rows = session.execute(
+        text("""
+            SELECT
+                TO_CHAR(DATE_TRUNC('month', o.order_date), 'YYYY-MM') AS month,
+                p.category,
+                COALESCE(SUM(oi.final_price), 0)                       AS revenue,
+                COUNT(DISTINCT o.order_id)                             AS orders
+            FROM public.orders o
+            JOIN public.order_items oi ON oi.order_id = o.order_id
+            JOIN public.products p ON p.product_id = oi.product_id
+            GROUP BY DATE_TRUNC('month', o.order_date), p.category
+            ORDER BY month, revenue DESC
+        """)
+    ).all()
+    return [
+        {"month": r.month, "category": r.category, "revenue": float(r.revenue), "orders": r.orders}
+        for r in rows
+    ]
+
+
+def channel_mix(session: Session) -> dict:
+    """Question: Which payment/device channels drive orders and does channel
+    correlate with return behavior?
+    COD often drives higher returns in Indian e-commerce — this surfaces that.
+    """
+    payment_rows = session.execute(
+        text("""
+            SELECT
+                o.payment_method,
+                COUNT(DISTINCT o.order_id)                             AS orders,
+                COALESCE(SUM(oi.final_price), 0)                       AS revenue,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)            AS return_rate
+            FROM public.orders o
+            JOIN public.order_items oi ON oi.order_id = o.order_id
+            GROUP BY o.payment_method
+            ORDER BY revenue DESC
+        """)
+    ).all()
+    device_rows = session.execute(
+        text("""
+            SELECT
+                o.device,
+                COUNT(DISTINCT o.order_id)    AS orders,
+                COALESCE(SUM(oi.final_price), 0) AS revenue,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0) AS return_rate
+            FROM public.orders o
+            JOIN public.order_items oi ON oi.order_id = o.order_id
+            GROUP BY o.device
+            ORDER BY revenue DESC
+        """)
+    ).all()
+    return {
+        "payment": [
+            {
+                "method": r.payment_method,
+                "orders": r.orders,
+                "revenue": float(r.revenue),
+                "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+            }
+            for r in payment_rows
+        ],
+        "device": [
+            {
+                "device": r.device,
+                "orders": r.orders,
+                "revenue": float(r.revenue),
+                "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+            }
+            for r in device_rows
+        ],
+    }
+
+
+def seller_performance(session: Session, limit: int = 20) -> list[dict]:
+    """Question: Which sellers have quality problems?
+    Ranks sellers by revenue and overlays return rate + avg rating.
+    High revenue + high return rate = quality risk.
+    High revenue + low rating = reputation risk.
+    The anomaly signal: sellers where return_rate > 2× the platform average (11.6%).
+    """
+    rows = session.execute(
+        text("""
+            SELECT
+                oi.seller_id,
+                COUNT(DISTINCT o.order_id)                             AS orders,
+                COALESCE(SUM(oi.final_price), 0)                       AS revenue,
+                AVG(oi.seller_rating_at_sale)                          AS avg_rating,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)            AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status
+                    IN ('DELIVERED','DELAYED') THEN o.order_id END), 0) AS delayed_rate
+            FROM public.order_items oi
+            JOIN public.orders o ON o.order_id = oi.order_id
+            GROUP BY oi.seller_id
+            HAVING COUNT(DISTINCT o.order_id) >= 10
+            ORDER BY revenue DESC
+            LIMIT :limit
+        """),
+        {"limit": limit},
+    ).all()
+    return [
+        {
+            "seller_id": r.seller_id,
+            "orders": r.orders,
+            "revenue": float(r.revenue),
+            "avg_rating": float(r.avg_rating) if r.avg_rating else 0.0,
+            "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+            "delayed_rate": float(r.delayed_rate) if r.delayed_rate else 0.0,
+        }
+        for r in rows
+    ]
+
+
+def operations_breakdown(session: Session) -> dict:
+    """Question: Where are delays and returns concentrated?
+    Breaks down return_rate and delayed_rate by: category, city, payment method,
+    and shipping_time_days.
+    A 50% delayed rate is the platform's biggest operational problem — this shows
+    whether it's uniform or concentrated in specific segments.
+    """
+    category_rows = session.execute(
+        text("""
+            SELECT
+                p.category,
+                COUNT(DISTINCT o.order_id)                         AS orders,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status
+                    IN ('DELIVERED','DELAYED') THEN o.order_id END), 0) AS delayed_rate
+            FROM public.orders o
+            JOIN public.order_items oi ON oi.order_id = o.order_id
+            JOIN public.products p ON p.product_id = oi.product_id
+            GROUP BY p.category
+            ORDER BY delayed_rate DESC NULLS LAST
+        """)
+    ).all()
+
+    city_rows = session.execute(
+        text("""
+            SELECT
+                o.ship_to_city                                     AS city,
+                COUNT(DISTINCT o.order_id)                         AS orders,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status
+                    IN ('DELIVERED','DELAYED') THEN o.order_id END), 0) AS delayed_rate
+            FROM public.orders o
+            GROUP BY o.ship_to_city
+            ORDER BY delayed_rate DESC NULLS LAST
+        """)
+    ).all()
+
+    shipping_rows = session.execute(
+        text("""
+            SELECT
+                o.shipping_time_days,
+                COUNT(DISTINCT o.order_id)                         AS orders,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status
+                    IN ('DELIVERED','DELAYED') THEN o.order_id END), 0) AS delayed_rate
+            FROM public.orders o
+            GROUP BY o.shipping_time_days
+            ORDER BY o.shipping_time_days
+        """)
+    ).all()
+
+    payment_rows = session.execute(
+        text("""
+            SELECT
+                o.payment_method,
+                COUNT(DISTINCT o.order_id)                         AS orders,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'RETURNED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT o.order_id), 0)        AS return_rate,
+                COUNT(DISTINCT CASE WHEN o.delivery_status = 'DELAYED'
+                    THEN o.order_id END)::float
+                    / NULLIF(COUNT(DISTINCT CASE WHEN o.delivery_status
+                    IN ('DELIVERED','DELAYED') THEN o.order_id END), 0) AS delayed_rate
+            FROM public.orders o
+            GROUP BY o.payment_method
+            ORDER BY return_rate DESC NULLS LAST
+        """)
+    ).all()
+
+    def _row(r, key: str):
+        return {
+            key: getattr(r, key),
+            "orders": r.orders,
+            "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+            "delayed_rate": float(r.delayed_rate) if r.delayed_rate else 0.0,
+        }
+
+    return {
+        "by_category": [_row(r, "category") for r in category_rows],
+        "by_city": [_row(r, "city") for r in city_rows],
+        "by_shipping_days": [
+            {
+                "shipping_time_days": r.shipping_time_days,
+                "orders": r.orders,
+                "return_rate": float(r.return_rate) if r.return_rate else 0.0,
+                "delayed_rate": float(r.delayed_rate) if r.delayed_rate else 0.0,
+            }
+            for r in shipping_rows
+        ],
+        "by_payment": [_row(r, "payment_method") for r in payment_rows],
+    }
