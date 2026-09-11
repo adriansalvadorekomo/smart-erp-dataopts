@@ -29,3 +29,9 @@ variable "environment_id" {
   type        = string
   default     = "aws:us-east-2:82159aa2-8057-4ea2-a93d-2f3a1b373d37"
 }
+
+variable "warehouse_id" {
+  description = "SQL warehouse for the sql_refresh file task (Gold SQL files run on a warehouse, not a serverless environment)."
+  type        = string
+  default     = "7a0f4f9c083ec2c4"
+}

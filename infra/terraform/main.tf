@@ -27,8 +27,9 @@ resource "databricks_schema" "gold" {
   comment      = "Business-ready analytical models (KPI matrix: docs/lakehouse.md §7)."
 }
 
-# Raw CSV landing (sample-first: the workspace cannot reach laptop Postgres,
+# Raw CSV landing (Free Edition: the workspace cannot reach laptop Postgres,
 # so backfill reads CSV from here; production enterprise uses a JDBC snapshot).
+# Holds the full 1M CSV (amazon_ecommerce_1M.csv) + the 10k sample.
 resource "databricks_volume" "landing" {
   catalog_name = var.catalog_name
   schema_name  = databricks_schema.bronze.name
@@ -56,7 +57,7 @@ resource "databricks_job" "medallion" {
     environment_key = "serverless"
     notebook_task {
       notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/01_bronze_backfill"
-      base_parameters = { catalog = var.catalog_name, source = "postgres" }
+      base_parameters = { catalog = var.catalog_name, source_file = "/Volumes/${var.catalog_name}/bronze/landing/amazon_ecommerce_1M.csv" }
     }
   }
 
@@ -81,12 +82,21 @@ resource "databricks_job" "medallion" {
   }
 
   task {
-    task_key        = "gold_build"
+    task_key = "gold_build"
     environment_key = "serverless"
     depends_on { task_key = "dq_gate" }
     notebook_task {
       notebook_path   = "${var.job_path_prefix}/lakehouse/notebooks/04_gold_build"
       base_parameters = { catalog = var.catalog_name }
+    }
+  }
+
+  task {
+    task_key = "sql_refresh"
+    depends_on { task_key = "gold_build" }
+    sql_task {
+      file { path = "${var.job_path_prefix}/lakehouse/sql/gold/sales_daily.sql" }
+      warehouse_id = var.warehouse_id
     }
   }
 }
