@@ -60,7 +60,7 @@ The thing that hooked me on data engineering is systems thinking — figuring ou
 
 Along the way it taught me the unglamorous lessons that matter: contracts before code, quality gates before Gold, and infrastructure as code from day one — the same instincts I sharpened as a DevOps intern deploying Open edX on OpenStack, where a "permission denied" SSH error turned out to be a cloud-init timing issue, not the network.
 
-- **Status:** Phases 1–3 done, lakehouse medallion validated at full 1M rows (DQ gate passed, revenue reconciled to baseline). Phases 4–10 incremental.
+- **Status:** Phases 1–4 done, lakehouse medallion validated at full 1M rows (DQ gate passed, revenue reconciled to baseline). Phases 5–10 incremental.
 - **Full wiki:** [deepwiki.com/adriansalvadorekomo/smart-erp-dataopts](https://deepwiki.com/adriansalvadorekomo/smart-erp-dataopts) (Overview · Architecture · OLTP · Lakehouse · Orchestration · CI/CD · Glossary)
 
 > *"Building this system is like opening a restaurant. First you decide the menu. Then you buy ingredients. Then you cook. Nobody opens a restaurant by hiring the AI sommelier first."*
@@ -321,7 +321,7 @@ Technology choices are rulings, not accidents — full log in [`docs/decisions.m
 | 1 | **Business Model** — multi-seller marketplace (India, INR), KPIs, money flow — [docs/business-model.md](docs/business-model.md) | 🟢 Done |
 | 2 | **Database** — PostgreSQL with 6 core tables + `raw`/`staging` — [database/](database/) | 🟢 Done |
 | 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟢 Done |
-| 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟡 Planned |
+| 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟢 Done |
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
 | 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟡 Skeleton (1M backfill validated) |
 | 7 | **BI** — Databricks SQL over Gold (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
