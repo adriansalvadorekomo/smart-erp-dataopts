@@ -31,7 +31,8 @@
 
 - [1. Project Overview](#1-project-overview)
 - [2. Architecture](#2-architecture)
-  - [Overall Architecture Diagram](#overall-architecture-diagram)
+  - [Overall Architecture Diagram — Data Flow](#overall-architecture-diagram--data-flow)
+  - [Deployment & Execution View](#deployment--execution-view)
   - [Architecture Diagram Sources (D2 · Graphviz)](#architecture-diagram-sources-d2--graphviz)
   - [End-to-End Data Flow](#end-to-end-data-flow)
   - [Data Flow with Code Entities](#data-flow-with-code-entities)
@@ -68,52 +69,67 @@ Along the way it taught me the unglamorous lessons that matter: contracts before
 
 ## 2. Architecture
 
-### Overall Architecture Diagram
+### Overall Architecture Diagram — Data Flow
 
 ![Lakehouse data-flow architecture](docs/architecture.svg)
 
-```mermaid
-flowchart TB
-    subgraph OLTP["🗄️ OLTP — PostgreSQL"]
-        PG[("PostgreSQL OLTP<br/>customers · sellers · products<br/>inventory · orders · order_items")]
-    end
-
-    subgraph MEDALLION["🧱 Medallion Lakehouse — Databricks"]
-        BR[("Bronze<br/>raw Delta · COPY INTO<br/>bronze.raw_purchases")]
-        SI[("Silver<br/>6 clean entities<br/>transform.py")]
-        DQ{"DQ Gate R1–R9<br/>fail-fast · rules.py"}
-        GO[("Gold marts<br/>fact_sales · sales_daily<br/>customer_360 · inventory_kpis")]
-    end
-
-    subgraph SERVE["📊 Consumption"]
-        BI("BI<br/>Databricks SQL")
-        ML("ML<br/>XGBoost · churn · MLflow")
-        AI("AI<br/>Genie / RAG over Gold")
-    end
-
-    subgraph OPS["⚙️ Operations"]
-        TF(["Terraform<br/>workspace assets"])
-        CI(["PR-gated CI<br/>tests · SQL guards · validate"])
-        WF(["Workflow<br/>smart-erp-medallion"])
-    end
-
-    PG -->|"snapshot"| BR
-    BR -->|"standardize"| SI
-    SI -->|"validate"| DQ
-    DQ -->|"certified"| GO
-    GO --> BI
-    GO --> ML
-    GO --> AI
-    TF -.->|"provisions"| BR
-    TF -.->|"provisions"| GO
-    CI -.->|"gates"| DQ
-    WF -.->|"orchestrates"| BR
-    WF -.->|"orchestrates"| GO
-```
+**Legend** — 🟦 source system · 🟥 lakehouse stages · 🟩 consumption layers · 🟪 operational components — solid arrows carry data (`snapshot`, `standardize`, `validate`, `certified`), dashed arrows provision or gate (`provisions`, `gates`).
 
 *PostgreSQL serves transactions; Databricks serves analytics. Bronze preserves
 raw history, Silver standardizes entities, Gold serves KPIs. Full contract:
 [`docs/lakehouse.md`](docs/lakehouse.md), decisions: [`docs/decisions.md`](docs/decisions.md).*
+
+### Deployment & Execution View
+
+A second illustration: not *what the data becomes*, but *where the code runs and how it ships* — local machine, GitHub, Databricks workspace, and Terraform.
+
+```mermaid
+flowchart LR
+    subgraph LOCAL["💻 Local machine"]
+        T(["unittest<br/>lakehouse/tests"])
+        RUN(["local_run.py<br/>no cluster"])
+        APPLY(["apply.sh<br/>migrations"])
+        PG[("PostgreSQL<br/>docker-compose")]
+    end
+
+    subgraph GH["🔀 GitHub"]
+        PR(["Pull Request<br/>CI: tests · SQL guards"])
+        MAIN(["main<br/>always deployable"])
+        REL(["Release<br/>versioned"])
+    end
+
+    subgraph WS["🧱 Databricks Workspace"]
+        NB1(["01_bronze_backfill"])
+        NB2(["02_silver_build"])
+        NB3(["03_dq_gate<br/>fail-fast R1–R9"])
+        NB4(["04_gold_build"])
+        JOB(["Workflow<br/>smart-erp-medallion"])
+        UC[("Unity Catalog<br/>schemas + volumes")]
+        DL[("Delta tables<br/>Bronze · Silver · Gold")]
+    end
+
+    subgraph TF["🏗️ Terraform"]
+        IA(["workspace assets"])
+    end
+
+    T --> RUN
+    APPLY --> PG
+    PR -->|"must pass"| MAIN
+    MAIN --> REL
+    REL -.->|"deploys"| JOB
+    NB1 --> NB2 --> NB3 --> NB4
+    JOB -.->|"orchestrates"| NB1
+    JOB -.->|"orchestrates"| NB4
+    IA -.->|"provisions"| UC
+    PR -.->|"validates"| IA
+    NB1 --> DL
+    NB2 --> DL
+    NB4 --> DL
+    PG -->|"snapshot<br/>Phase 3"| NB1
+    UC -.->|"hosts"| DL
+```
+
+**Legend** — `[()]` cylinder = data at rest · `([])` stadium = jobs, runners, and documents — solid arrows execute or produce, dashed arrows automate, provision, or gate.
 
 ### Architecture Diagram Sources (D2 · Graphviz · Mermaid)
 

@@ -1,40 +1,49 @@
-%% DataOps Lakehouse — system-design flow (Mermaid source)
+%% DataOps Lakehouse — deployment & execution view (Mermaid source)
 %% Rendered natively by GitHub from the README code block.
-%% Also see docs/architecture.d2 (D2) and docs/architecture.dot (Graphviz).
+%% Companion to docs/architecture.d2, which shows the data-flow view.
+%% Legend: [()] cylinder = data at rest · ([]) stadium = jobs/runners
+%%          solid arrow = executes / produces · dashed arrow = automates / gates.
 
-flowchart TB
-    subgraph OLTP["🗄️ OLTP — PostgreSQL"]
-        PG[("PostgreSQL OLTP<br/>customers · sellers · products<br/>inventory · orders · order_items")]
+flowchart LR
+    subgraph LOCAL["💻 Local machine"]
+        T(["unittest<br/>lakehouse/tests"])
+        RUN(["local_run.py<br/>no cluster"])
+        APPLY(["apply.sh<br/>migrations"])
+        PG[("PostgreSQL<br/>docker-compose")]
     end
 
-    subgraph MEDALLION["🧱 Medallion Lakehouse — Databricks"]
-        BR[("Bronze<br/>raw Delta · COPY INTO<br/>bronze.raw_purchases")]
-        SI[("Silver<br/>6 clean entities<br/>transform.py")]
-        DQ{"DQ Gate R1–R9<br/>fail-fast · rules.py"}
-        GO[("Gold marts<br/>fact_sales · sales_daily<br/>customer_360 · inventory_kpis")]
+    subgraph GH["🔀 GitHub"]
+        PR(["Pull Request<br/>CI: tests · SQL guards"])
+        MAIN(["main<br/>always deployable"])
+        REL(["Release<br/>versioned"])
     end
 
-    subgraph SERVE["📊 Consumption"]
-        BI("BI<br/>Databricks SQL")
-        ML("ML<br/>XGBoost · churn · MLflow")
-        AI("AI<br/>Genie / RAG over Gold")
+    subgraph WS["🧱 Databricks Workspace"]
+        NB1(["01_bronze_backfill"])
+        NB2(["02_silver_build"])
+        NB3(["03_dq_gate<br/>fail-fast R1–R9"])
+        NB4(["04_gold_build"])
+        JOB(["Workflow<br/>smart-erp-medallion"])
+        UC[("Unity Catalog<br/>schemas + volumes")]
+        DL[("Delta tables<br/>Bronze · Silver · Gold")]
     end
 
-    subgraph OPS["⚙️ Operations"]
-        TF(["Terraform<br/>workspace assets"])
-        CI(["PR-gated CI<br/>tests · SQL guards · validate"])
-        WF(["Workflow<br/>smart-erp-medallion"])
+    subgraph TF["🏗️ Terraform"]
+        IA(["workspace assets"])
     end
 
-    PG -->|"snapshot"| BR
-    BR -->|"standardize"| SI
-    SI -->|"validate"| DQ
-    DQ -->|"certified"| GO
-    GO --> BI
-    GO --> ML
-    GO --> AI
-    TF -.->|"provisions"| BR
-    TF -.->|"provisions"| GO
-    CI -.->|"gates"| DQ
-    WF -.->|"orchestrates"| BR
-    WF -.->|"orchestrates"| GO
+    T --> RUN
+    APPLY --> PG
+    PR -->|"must pass"| MAIN
+    MAIN --> REL
+    REL -.->|"deploys"| JOB
+    NB1 --> NB2 --> NB3 --> NB4
+    JOB -.->|"orchestrates"| NB1
+    JOB -.->|"orchestrates"| NB4
+    IA -.->|"provisions"| UC
+    PR -.->|"validates"| IA
+    NB1 --> DL
+    NB2 --> DL
+    NB4 --> DL
+    PG -->|"snapshot<br/>Phase 3"| NB1
+    UC -.->|"hosts"| DL
