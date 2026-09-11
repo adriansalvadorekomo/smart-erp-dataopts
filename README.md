@@ -60,7 +60,7 @@ The thing that hooked me on data engineering is systems thinking — figuring ou
 
 Along the way it taught me the unglamorous lessons that matter: contracts before code, quality gates before Gold, and infrastructure as code from day one — the same instincts I sharpened as a DevOps intern deploying Open edX on OpenStack, where a "permission denied" SSH error turned out to be a cloud-init timing issue, not the network.
 
-- **Status:** Phases 1–2 done, lakehouse skeleton live and validated on a live sample (DQ gate passed, sample revenue reconciled to baseline). Phases 3–10 incremental.
+- **Status:** Phases 1–3 done, lakehouse medallion validated at full 1M rows (DQ gate passed, revenue reconciled to baseline). Phases 4–10 incremental.
 - **Full wiki:** [deepwiki.com/adriansalvadorekomo/smart-erp-dataopts](https://deepwiki.com/adriansalvadorekomo/smart-erp-dataopts) (Overview · Architecture · OLTP · Lakehouse · Orchestration · CI/CD · Glossary)
 
 > *"Building this system is like opening a restaurant. First you decide the menu. Then you buy ingredients. Then you cook. Nobody opens a restaurant by hiring the AI sommelier first."*
@@ -237,7 +237,7 @@ Migrations ([`database/migrations/`](database/migrations/), applied in order via
 
 ## 5. Seed Ingestion & Acceptance
 
-Phase 3 loads the 1M-row Amazon-style CSV through `raw.purchases` → `staging.purchases` → normalized `public` tables, with acceptance checks (row counts + strict revenue checksum baseline) before any medallion ingestion. Status: **next** — the [`scripts/seed/`](scripts/seed/) scaffold is in place; ingestion lands with Phase 3.
+Phase 3 loads the 1M-row Amazon-style CSV through `raw.purchases` → `staging.purchases` → normalized `public` tables, with acceptance checks (row counts + strict revenue checksum baseline) before any medallion ingestion. Status: **done** — [`scripts/seed/`](scripts/seed/) ingests idempotently and `acceptance.py` passes (1M orders, revenue ₹9,938,876,985 ± ₹1,000).
 
 ---
 
@@ -320,10 +320,10 @@ Technology choices are rulings, not accidents — full log in [`docs/decisions.m
 |-------|-----------|--------|
 | 1 | **Business Model** — multi-seller marketplace (India, INR), KPIs, money flow — [docs/business-model.md](docs/business-model.md) | 🟢 Done |
 | 2 | **Database** — PostgreSQL with 6 core tables + `raw`/`staging` — [database/](database/) | 🟢 Done |
-| 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟡 Next |
+| 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟢 Done (PR pending) |
 | 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟡 Planned |
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
-| 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟡 Skeleton |
+| 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟡 Skeleton (1M backfill validated) |
 | 7 | **BI** — Databricks SQL over Gold (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
 | 8 | **ML** — Return propensity + customer churn (scikit-learn/XGBoost), MLflow-native tracking | 🟡 Planned |
 | 9 | **AI** — Grounded assistant over governed Gold (Genie / SQL-first; no generic chatbot) | 🟡 Planned |
@@ -369,8 +369,8 @@ python lakehouse/local_run.py
 # OLTP: apply migrations (needs PostgreSQL)
 ./database/apply.sh
 
-# Phase 3 (next): ingest the 1M CSV, then run acceptance checks
-# python3 scripts/seed/ingest.py && python3 scripts/seed/acceptance.py
+# Phase 3: ingest the 1M CSV, then run acceptance checks
+python3 scripts/seed/ingest.py && python3 scripts/seed/acceptance.py
 
 # Workspace (Free Edition): validate infra, deploy job manually
 cd infra/terraform && terraform init -backend=false && terraform validate
