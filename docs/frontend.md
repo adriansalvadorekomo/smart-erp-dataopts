@@ -15,7 +15,9 @@ backend wins.
 
 | Route | Page | Backend calls |
 |---|---|---|
-| `/` | Dashboard — health/DB badge, orders + revenue shown, status-filtered orders table | `GET /health`, `GET /orders?delivery_status=` |
+| `/` | Overview — Gold KPI grid (revenue, AOV, return/delayed rates, stock-critical, Pareto), 90-day revenue chart, category + discount mix, top sellers, status split | `GET /stats/overview`, `/revenue-trend`, `/revenue-by-category`, `/discount-bands`, `/top-sellers`, `/pareto` |
+| `/pipeline` | Medallion flow — OLTP → Bronze → Silver → DQ gate → Gold stages, live DQ R1–R7 table, fulfillment split | `GET /stats/overview`, `/stats/dq-checks` |
+| `/orders` | Orders — status-filtered table, latest first | `GET /orders?delivery_status=` |
 | `/orders/:id` | Order detail — lines, totals, terminal-transition buttons (immutable notice on terminal states) | `GET /orders/{id}`, `PATCH /orders/{id}/status` |
 | `/new` | Create order — multi-line form | `POST /orders` |
 
