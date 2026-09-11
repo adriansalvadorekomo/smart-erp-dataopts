@@ -41,11 +41,13 @@
 - [6. Configuration & Local Test Harness](#6-configuration--local-test-harness)
 - [7. Orchestration & Infrastructure](#7-orchestration--infrastructure)
 - [8. DataOps Process & CI/CD](#8-dataops-process--cicd)
-- [9. Roadmap — 10 Phases](#9-roadmap--10-phases)
-- [10. Tech Stack](#10-tech-stack)
-- [11. Getting Started](#11-getting-started)
-- [12. Docs](#12-docs)
-- [13. DataOps Principles](#13-dataops-principles)
+- [9. Business Model, KPIs & Decisions](#9-business-model-kpis--decisions)
+- [10. Roadmap — 10 Phases](#10-roadmap--10-phases)
+- [11. Tech Stack](#11-tech-stack)
+- [12. Getting Started](#12-getting-started)
+- [13. Docs](#13-docs)
+- [14. DataOps Principles](#14-dataops-principles)
+- [15. Conclusion](#15-conclusion)
 
 ---
 
@@ -213,7 +215,50 @@ Trunk-Based Development: `main` is the always-deployable trunk, short-lived feat
 
 ---
 
-## 9. Roadmap — 10 Phases
+## 9. Business Model, KPIs & Decisions
+
+Every table in this repo answers to a business contract. This section is that contract in miniature — the domain, the numbers that matter, and the architectural rulings behind every technology choice. Full text: [`docs/business-model.md`](docs/business-model.md) and [`docs/decisions.md`](docs/decisions.md).
+
+### Domain Contract & Core Entities
+
+Smart-ERP is a multi-seller e-commerce marketplace in India, transacting in Indian Rupees (INR, ₹): a 24-month window of operational data (**2024-03-31 → 2026-03-31**), **1,000,000 orders** across **603,815 customers**, **9,000 independent sellers**, and **89,999 products** in 5 categories (Electronics, Home, Sports, Beauty, Clothing).
+
+The contract is enforced across six core PostgreSQL tables ([`database/migrations/002_core_tables.sql`](database/migrations/002_core_tables.sql)) and mirrored through the medallion layers:
+
+```
+customers 1 ──── ∞ orders 1 ──── ∞ order_items ∞ ──── 1 products
+sellers   1 ──── ∞ order_items         products 1 ──── ∞ inventory (snapshots)
+```
+
+**Order lifecycle** (`orders.delivery_status`): `IN TRANSIT` (29.4%, dispatch) → `DELIVERED` (29.5%, terminal success) · `DELAYED` (29.5%, exception) · `RETURNED` (11.6%, reverse logistics).
+
+### KPI Definitions & Gold Marts
+
+KPIs are computed deterministically in the Gold layer ([`lakehouse/sql/gold/`](lakehouse/sql/gold/) + [`lakehouse/src/gold/models.py`](lakehouse/src/gold/models.py)):
+
+| KPI | Definition | Gold mart | Business intent |
+|---|---|---|---|
+| Average Order Value (AOV) | Σ final_price / total orders | `fact_sales` | Basket size and pricing health |
+| Return Rate | orders with status RETURNED / all orders | `sales_daily` | Fulfillment & quality signal (baseline: 11.6%) |
+| Customer Concentration (Pareto) | Revenue share of top 20% customers | `customer_360` | Revenue risk (observed: top 20% drive 62.9%) |
+| Stock-Critical Products | Products with latest stock < 20 | `inventory_kpis` | Reorder alerts (baseline: 3,561 items) |
+
+### Architectural Decision Records (ADRs)
+
+Technology choices are rulings, not accidents — full log in [`docs/decisions.md`](docs/decisions.md):
+
+- **ADR-1** — Databricks over Airflow + dbt + Postgres analytics: one analytical plane, fewer seams
+- **ADR-2** — PostgreSQL remains OLTP: protects transactional performance from analytical queries
+- **ADR-3** — Medallion (Bronze / Silver / Gold): raw auditability → clean entities → governed marts
+- **ADR-4** — PySpark / SQL instead of dbt: one SQL framework, simpler CI graph
+- **ADR-5** — Databricks Workflows instead of Airflow: native orchestration ([`lakehouse/workflows/smart_erp_job.json`](lakehouse/workflows/smart_erp_job.json))
+- **ADR-6** — Databricks SQL instead of Metabase as core BI: workspace-native serving
+- **ADR-7** — MLflow (Databricks-native): experiment tracking + model registry for churn / return propensity
+- **ADR-8** — Local-first dev with prod equivalents: every cloud capability has a zero-credential harness ([`lakehouse/local_run.py`](lakehouse/local_run.py) + `unittest`)
+
+---
+
+## 10. Roadmap — 10 Phases
 
 | Phase | Component | Status |
 |-------|-----------|--------|
@@ -230,7 +275,7 @@ Trunk-Based Development: `main` is the always-deployable trunk, short-lived feat
 
 ---
 
-## 10. Tech Stack
+## 11. Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -245,11 +290,11 @@ Trunk-Based Development: `main` is the always-deployable trunk, short-lived feat
 | **Package Manager** | uv |
 
 > Retired: Airbyte, dbt, Airflow, Metabase-as-core, pgvector-as-sidecar — see
-> [docs/decisions.md](docs/decisions.md) (ADRs 1–7) for why. `bi/` stays as an export folder.
+> [docs/decisions.md](docs/decisions.md) (ADRs 1–8) for why. `bi/` stays as an export folder.
 
 ---
 
-## 11. Getting Started
+## 12. Getting Started
 
 ```bash
 # Clone the repository
@@ -281,7 +326,7 @@ cd infra/terraform && terraform init -backend=false && terraform validate
 
 ---
 
-## 12. Docs
+## 13. Docs
 
 - **Business model & data contract** — [`docs/business-model.md`](docs/business-model.md) (single source of truth for Phases 2–9)
 - **Lakehouse architecture** — [`docs/lakehouse.md`](docs/lakehouse.md) (Bronze/Silver/Gold, flows, KPI→Gold matrix)
@@ -294,13 +339,21 @@ cd infra/terraform && terraform init -backend=false && terraform validate
 
 ---
 
-## 13. DataOps Principles
+## 14. DataOps Principles
 
 Every phase follows these three rules:
 
 - **Automate** the repetitive (pipelines, tests, deploys)
 - **Version** everything (code, schemas, models, data)
 - **Observe** always (logs, metrics, alerts from day one)
+
+---
+
+## 15. Conclusion
+
+This repo started as a question — *what does "production-ready" actually mean?* — and became my answer: contracts before code, quality gates before Gold, infrastructure as code from day one. The warehouse runs, the gates hold, and every phase ships through a green pipeline.
+
+What's next is the exciting part: seed the million rows, raise the FastAPI backend, and grow Gold into dashboards, churn models, and a grounded AI assistant. If data systems that fail loudly instead of silently is your kind of engineering, let's talk.
 
 ---
 
