@@ -102,13 +102,15 @@ Runs on every PR and every push to `main`. Failure blocks the merge.
 | `sql-parse` | Gold SQL sanity (silver-sourced, margin labelled estimated) | leaking OLTP/raw reads |
 | `terraform-validate` | `terraform init -backend=false && terraform validate` in `infra/terraform` | invalid workspace assets |
 | `database-sanity` | apply `database/apply.sh` against Postgres, assert core tables exist | broken migrations |
-| `seed-acceptance-note` | doc-consistency guard until `scripts/seed/` merges (full 1M-row acceptance runs on its own branch) | contract drift |
+| `backend-test` | Alembic migrate + pytest orders API on throwaway Postgres | failing contract |
+| `frontend-build` | `npm ci` + `tsc -b` + `vite build` in `frontend/` | type/build break |
+| `seed-acceptance-note` | doc-consistency guard (full 1M-row acceptance needs the git-ignored CSV, runs locally) | contract drift |
 
 > Machine-local credentials (Databricks token, PG passwords) are **never** in the repo and CI never deploys to the workspace — Free Edition deploy stays a manual `workflow_dispatch`. See `docs/databricks-free-edition.md`.
 
 ### Environment targets
 
-- **dev / PR:** every PR runs the full matrix (lakehouse tests need no DB; only `database-sanity` uses a throwaway Postgres container). Nothing is deployed.
+- **dev / PR:** every PR runs the full matrix (lakehouse tests need no DB; `database-sanity` + `backend-test` use throwaway Postgres containers). Nothing is deployed.
 - **staging:** next `main` merge is promoted; the Workflows job runs fully with all data.
 - **prod:** a released `v*` tag is `what to be deployed` after staging sign-off.
 

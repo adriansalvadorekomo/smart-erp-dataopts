@@ -103,3 +103,19 @@ def test_multi_line_order(client):
     assert r.status_code == 201
     totals = sorted(i["final_price"] for i in r.json()["items"])
     assert totals == [900.00, 1000.00]
+
+
+def test_list_orders_with_status_filter(client):
+    order_id = client.post("/orders", json=_payload()).json()["order_id"]
+
+    r = client.get("/orders")
+    assert r.status_code == 200
+    assert any(o["order_id"] == order_id for o in r.json())
+
+    r = client.get("/orders", params={"delivery_status": "DELIVERED"})
+    assert r.status_code == 200
+    assert all(o["delivery_status"] == "DELIVERED" for o in r.json())
+
+    client.patch(f"/orders/{order_id}/status", json={"delivery_status": "DELIVERED"})
+    r = client.get("/orders", params={"delivery_status": "DELIVERED"})
+    assert any(o["order_id"] == order_id for o in r.json())

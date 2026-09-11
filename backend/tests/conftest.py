@@ -86,10 +86,12 @@ def session(engine):
         )
     )
     s.execute(
+        text("DELETE FROM public.inventory WHERE product_id = 'P_TEST'")
+    )
+    s.execute(
         text(
             "INSERT INTO public.inventory (product_id, snapshot_date, stock)"
             " VALUES ('P_TEST', '2024-03-31', 100)"
-            " ON CONFLICT (product_id, snapshot_date) DO UPDATE SET stock = 100"
         )
     )
     s.commit()
