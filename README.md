@@ -1,7 +1,7 @@
-<h1 align="center">Smart-ERP · DataOps</h1>
+<h1 align="center">DataOps Lakehouse for E-commerce Analytics</h1>
 
 <p align="center">
-  <b>DataOps-driven ERP for e-commerce</b> — 10-phase build from business model to AI-powered chat assistant.
+  <b>PostgreSQL + Databricks medallion lakehouse</b> — Bronze → Silver → DQ gate → Gold, Terraform-managed infra with PR-gated CI.
 </p>
 
 <p align="center">
