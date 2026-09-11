@@ -390,6 +390,8 @@ cd infra/terraform && terraform init -backend=false && terraform validate
 - **Free Edition limits** — [`docs/databricks-free-edition.md`](docs/databricks-free-edition.md) (dev/prod equivalence)
 - **Branching & CI/CD** — [`docs/branching-strategy.md`](docs/branching-strategy.md) (Trunk-Based Development, GitHub Actions pipeline)
 - **Database** — [`database/README.md`](database/README.md) (migrations, invariants, apply)
+- **Backend** — run via `uv run uvicorn backend.app.main:app --port 8000` (endpoints: `POST/GET /orders`, `PATCH /orders/{id}/status`, `GET /health`)
+- **Frontend** — [`frontend/README.md`](frontend/README.md) (run guide) · [`docs/frontend.md`](docs/frontend.md) (pages, data flow, scope)
 - **Lakehouse package** — [`lakehouse/README.md`](lakehouse/README.md) (layout, verify commands)
 - **Full wiki** — [deepwiki.com/adriansalvadorekomo/smart-erp-dataopts](https://deepwiki.com/adriansalvadorekomo/smart-erp-dataopts) (Overview · Architecture · OLTP · Lakehouse · Orchestration · CI/CD · Glossary)
 
