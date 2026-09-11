@@ -6,12 +6,12 @@
   "tasks": [
     {
       "task_key": "bronze_ingest",
-      "description": "Snapshot staging.purchases (JDBC, off-peak) → append bronze.raw_purchases with _ingest_ts/_source. Idempotent via purchase_date watermark.",
+      "description": "Bronze backfill: COPY INTO bronze.raw_purchases from the landing-volume CSV with _ingest_ts/_source (Free Edition; production enterprise: JDBC snapshot). Idempotent — COPY INTO tracks ingested files.",
       "notebook_task": {
         "notebook_path": "/Repos/larrymclarens@gmail.com/smart-erp/lakehouse/notebooks/01_bronze_backfill",
         "base_parameters": {
           "catalog": "{{job.parameters.catalog}}",
-          "source": "postgres"
+          "source_file": "/Volumes/{{job.parameters.catalog}}/bronze/landing/amazon_ecommerce_1M.csv"
         }
       }
     },

@@ -24,12 +24,13 @@ sellers 1 ──── ∞ order_items                            │
 | `migrations/001_schemas.sql` | `raw` + `staging` schemas |
 | `migrations/002_core_tables.sql` | 6 core tables, FKs, CHECKs, indexes, `updated_at` triggers |
 | `migrations/003_raw_staging.sql` | `raw.purchases` + `staging.purchases` for ingestion |
+| `migrations/004_final_price_tolerance.sql` | Widen `final_price` CHECK to ±₹5.00 (business-model §6; source rounds from higher precision) |
 
 Applied in filename order. `002` drops/recreates core tables (early-scaffold full refresh).
 
 ### Invariants enforced in DDL
 
-- `order_items.final_price ≈ unit_price × quantity × (1 − discount_pct/100)` (± ₹0.01)
+- `order_items.final_price ≈ unit_price × quantity × (1 − discount_pct/100)` (± ₹5.00 — source rounds from higher precision, max ≈₹3.99)
 - `orders.delivery_status ∈ {IN TRANSIT, DELIVERED, DELAYED, RETURNED}`
 - `payment_method` / `device` / product `category` restricted to validated source sets
 - `inventory (product_id, snapshot_date)` UNIQUE (idempotent re-load)

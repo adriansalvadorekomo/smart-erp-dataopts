@@ -24,5 +24,9 @@ infra/terraform/.terraform/
 
 # Raw datasets (large files — never commit)
 data/amazon-e-commerce/*.csv
+# Secrets — never commit (tokens, passwords via env / secret scopes only)
+.env
+.env.*
+!.env.example
 .opencode/
 .sessions/
