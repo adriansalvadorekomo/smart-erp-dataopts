@@ -46,7 +46,6 @@
 - [11. Getting Started](#11-getting-started)
 - [12. Docs](#12-docs)
 - [13. DataOps Principles](#13-dataops-principles)
-- [14. What This Proves](#14-what-this-proves)
 
 ---
 
@@ -302,17 +301,6 @@ Every phase follows these three rules:
 - **Automate** the repetitive (pipelines, tests, deploys)
 - **Version** everything (code, schemas, models, data)
 - **Observe** always (logs, metrics, alerts from day one)
-
----
-
-## 14. What This Proves
-
-If you're hiring a Junior Data Engineer, here's what this repo lets you verify in under 10 minutes:
-
-- **I model for the business, not the source** — warehouse organized around business questions ([`docs/business-model.md`](docs/business-model.md))
-- **I gate quality with code, not hope** — R1–R9 fail-fast before Gold ([`lakehouse/src/quality/rules.py`](lakehouse/src/quality/rules.py))
-- **I ship infrastructure as code** — Terraform-managed workspace, validated in CI ([`infra/terraform/`](infra/terraform/))
-- **I verify without a cluster** — `local_run.py` + unit tests run anywhere ([§6](#6-configuration--local-test-harness))
 
 ---
 
