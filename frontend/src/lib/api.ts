@@ -94,6 +94,10 @@ export const api = {
   topSellers: (limit = 8) => request<TopSeller[]>(`/stats/top-sellers?limit=${limit}`),
   pareto: () => request<{ top20_share: number }>("/stats/pareto"),
   dqChecks: () => request<DQCheck[]>("/stats/dq-checks"),
+  sellers: (limit = 50) => request<SellerPerf[]>(`/stats/seller-performance?limit=${limit}`),
+  categoryTrend: (months = 12) => request<CategoryMonth[]>(`/stats/category-trend?months=${months}`),
+  stockCritical: (limit = 50) => request<StockAlert[]>(`/stats/stock-critical?limit=${limit}`),
+  cities: () => request<CityPerf[]>("/stats/city-performance"),
 };
 
 export function formatPercent(ratio: number, digits = 1): string {
@@ -140,6 +144,38 @@ export interface TopSeller {
 export interface DQCheck {
   rule: string;
   violations: number;
+}
+
+export interface SellerPerf {
+  seller_id: string;
+  revenue: number;
+  lines: number;
+  avg_rating: number;
+  delayed_rate: number;
+  return_rate: number;
+}
+
+export interface CategoryMonth {
+  month: string;
+  category: string;
+  revenue: number;
+}
+
+export interface StockAlert {
+  product_id: string;
+  category: string;
+  brand: string;
+  current_price: number;
+  latest_stock: number;
+  latest_snapshot_date: string;
+}
+
+export interface CityPerf {
+  city: string;
+  revenue: number;
+  orders: number;
+  delayed_rate: number;
+  return_rate: number;
 }
 
 export function formatINR(n: number, digits = 2): string {

@@ -49,3 +49,32 @@ def get_pareto(session: Session = Depends(get_db)):
 @router.get("/dq-checks")
 def get_dq_checks(session: Session = Depends(get_db)):
     return stats.dq_checks(session)
+
+
+@router.get("/seller-performance")
+def get_seller_performance(
+    limit: int = Query(default=50, ge=1, le=200),
+    session: Session = Depends(get_db),
+):
+    return stats.seller_performance(session, limit=limit)
+
+
+@router.get("/category-trend")
+def get_category_trend(
+    months: int = Query(default=12, ge=3, le=36),
+    session: Session = Depends(get_db),
+):
+    return stats.category_trend(session, months=months)
+
+
+@router.get("/stock-critical")
+def get_stock_critical(
+    limit: int = Query(default=50, ge=1, le=200),
+    session: Session = Depends(get_db),
+):
+    return stats.stock_critical_list(session, limit=limit)
+
+
+@router.get("/city-performance")
+def get_city_performance(session: Session = Depends(get_db)):
+    return stats.city_performance(session)

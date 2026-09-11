@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import case, func, select, text
+from sqlalchemy import case, desc, func, select, text
 from sqlalchemy.orm import Session
 
 from backend.app.models.entities import Inventory, Order, OrderItem, Product
@@ -211,4 +211,143 @@ def dq_checks(session: Session) -> list[dict]:
     return [
         {"rule": name, "violations": session.execute(text(sql)).scalar() or 0}
         for name, sql in checks
+    ]
+
+
+def seller_performance(session: Session, limit: int = 50) -> list[dict]:
+    """Which sellers drive revenue — and which show abnormal fulfillment.
+
+    Per seller: revenue, lines, avg rating at sale, delayed/return rates.
+    The frontend flags outliers (high delay/return, low rating) for attention.
+    """
+    completed = func.sum(case((Order.delivery_status.in_(("DELIVERED", "DELAYED")), 1), else_=0))
+    rows = session.execute(
+        select(
+            OrderItem.seller_id.label("seller_id"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
+            func.count(OrderItem.order_item_id).label("lines"),
+            func.coalesce(func.avg(OrderItem.seller_rating_at_sale), 0).label("avg_rating"),
+            (
+                func.sum(case((Order.delivery_status == "DELAYED", 1), else_=0))
+                / func.nullif(completed, 0)
+            ).label("delayed_rate"),
+            (
+                func.sum(case((Order.delivery_status == "RETURNED", 1), else_=0))
+                / func.nullif(func.count(OrderItem.order_item_id), 0)
+            ).label("return_rate"),
+        )
+        .join(Order, Order.order_id == OrderItem.order_id)
+        .group_by(OrderItem.seller_id)
+        .order_by(func.sum(OrderItem.final_price).desc())
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "seller_id": r.seller_id,
+            "revenue": float(r.revenue),
+            "lines": r.lines,
+            "avg_rating": float(r.avg_rating),
+            "delayed_rate": float(r.delayed_rate) if r.delayed_rate is not None else 0.0,
+            "return_rate": float(r.return_rate) if r.return_rate is not None else 0.0,
+        }
+        for r in rows
+    ]
+
+
+def category_trend(session: Session, months: int = 12) -> list[dict]:
+    """Which categories are growing or declining — monthly revenue per category."""
+    month = func.date_trunc("month", Order.order_date)
+    recent = (
+        select(month.label("m")).distinct().order_by(desc(text("m"))).limit(months).subquery()
+    )
+    rows = session.execute(
+        select(
+            month.label("month"),
+            Product.category.label("category"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
+        )
+        .join(OrderItem, OrderItem.order_id == Order.order_id)
+        .join(Product, Product.product_id == OrderItem.product_id)
+        .where(month.in_(select(recent.c.m)))
+        .group_by(month, Product.category)
+        .order_by(month, Product.category)
+    ).all()
+    return [
+        {"month": r.month.date().isoformat()[:7], "category": r.category, "revenue": float(r.revenue)}
+        for r in rows
+    ]
+
+
+def stock_critical_list(session: Session, limit: int = 50) -> list[dict]:
+    """What needs reordering now — products whose latest snapshot is under 20."""
+    latest_sub = (
+        select(
+            Inventory.product_id,
+            func.max(Inventory.snapshot_date).label("max_date"),
+        )
+        .group_by(Inventory.product_id)
+        .subquery()
+    )
+    rows = session.execute(
+        select(
+            Product.product_id,
+            Product.category,
+            Product.brand,
+            Product.current_price,
+            Inventory.stock.label("latest_stock"),
+            Inventory.snapshot_date.label("latest_snapshot_date"),
+        )
+        .join(Inventory, Inventory.product_id == Product.product_id)
+        .join(
+            latest_sub,
+            (Inventory.product_id == latest_sub.c.product_id)
+            & (Inventory.snapshot_date == latest_sub.c.max_date),
+        )
+        .where(Inventory.stock < 20)
+        .order_by(Inventory.stock, Product.product_id)
+        .limit(limit)
+    ).all()
+    return [
+        {
+            "product_id": r.product_id,
+            "category": r.category,
+            "brand": r.brand,
+            "current_price": float(r.current_price),
+            "latest_stock": r.latest_stock,
+            "latest_snapshot_date": r.latest_snapshot_date.isoformat(),
+        }
+        for r in rows
+    ]
+
+
+def city_performance(session: Session) -> list[dict]:
+    """Which regions drive revenue — and how shipping performs there."""
+    completed = func.sum(case((Order.delivery_status.in_(("DELIVERED", "DELAYED")), 1), else_=0))
+    rows = session.execute(
+        select(
+            Order.ship_to_city.label("city"),
+            func.coalesce(func.sum(OrderItem.final_price), 0).label("revenue"),
+            func.count(func.distinct(Order.order_id)).label("orders"),
+            (
+                func.sum(case((Order.delivery_status == "DELAYED", 1), else_=0))
+                / func.nullif(completed, 0)
+            ).label("delayed_rate"),
+            (
+                func.sum(case((Order.delivery_status == "RETURNED", 1), else_=0))
+                / func.nullif(func.count(func.distinct(Order.order_id)), 0)
+            ).label("return_rate"),
+        )
+        .join(OrderItem, OrderItem.order_id == Order.order_id)
+        .group_by(Order.ship_to_city)
+        .order_by(func.sum(OrderItem.final_price).desc())
+    ).all()
+    return [
+        {
+            "city": r.city,
+            "revenue": float(r.revenue),
+            "orders": r.orders,
+            "delayed_rate": float(r.delayed_rate) if r.delayed_rate is not None else 0.0,
+            "return_rate": float(r.return_rate) if r.return_rate is not None else 0.0,
+        }
+        for r in rows
     ]

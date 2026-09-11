@@ -1,10 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Boxes, LayoutDashboard, Plus, Rows3 } from "lucide-react";
+import { Boxes, ChartLine, LayoutDashboard, Plus, Rows3, SlidersHorizontal, Store } from "lucide-react";
 import { Suspense, lazy } from "react";
 import { Link, NavLink, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const Overview = lazy(() => import("./pages/Overview"));
+const Sales = lazy(() => import("./pages/Sales"));
+const Sellers = lazy(() => import("./pages/Sellers"));
+const Operations = lazy(() => import("./pages/Operations"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const Orders = lazy(() => import("./pages/Orders"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
@@ -48,10 +51,14 @@ function App() {
             <nav className="flex flex-col gap-0.5">
               <Section label="Analyze" />
               <NavItem to="/" end icon={<LayoutDashboard size={18} strokeWidth={1.75} />} label="Overview" />
-              <NavItem to="/pipeline" icon={<Boxes size={18} strokeWidth={1.75} />} label="Pipeline" />
+              <NavItem to="/sales" icon={<ChartLine size={18} strokeWidth={1.75} />} label="Sales" />
+              <NavItem to="/sellers" icon={<Store size={18} strokeWidth={1.75} />} label="Sellers" />
               <Section label="Operate" />
+              <NavItem to="/operations" icon={<SlidersHorizontal size={18} strokeWidth={1.75} />} label="Operations" />
               <NavItem to="/orders" icon={<Rows3 size={18} strokeWidth={1.75} />} label="Orders" />
               <NavItem to="/new" icon={<Plus size={18} strokeWidth={1.75} />} label="New order" />
+              <Section label="Platform" />
+              <NavItem to="/pipeline" icon={<Boxes size={18} strokeWidth={1.75} />} label="Pipeline" />
             </nav>
           </aside>
           <div className="min-w-0 flex-1">
@@ -60,19 +67,25 @@ function App() {
                 <NavLink to="/" end className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
                   Overview
                 </NavLink>
-                <NavLink to="/pipeline" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
-                  Pipeline
+                <NavLink to="/sales" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
+                  Sales
+                </NavLink>
+                <NavLink to="/sellers" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
+                  Sellers
+                </NavLink>
+                <NavLink to="/operations" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
+                  Ops
                 </NavLink>
                 <NavLink to="/orders" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
                   Orders
-                </NavLink>
-                <NavLink to="/new" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
-                  New
                 </NavLink>
               </nav>
               <Suspense fallback={<p className="text-[15px] text-muted-foreground">Loading…</p>}>
               <Routes>
                 <Route path="/" element={<Overview />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/sellers" element={<Sellers />} />
+                <Route path="/operations" element={<Operations />} />
                 <Route path="/pipeline" element={<Pipeline />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />
