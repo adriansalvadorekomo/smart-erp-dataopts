@@ -1,25 +1,37 @@
-# Frontend — Ops Dashboard (Phase 5)
+# Frontend — Data Product (Phase 5)
 
-> **Status:** ✅ Increment 1 live (orders over the Phase 4 API). Run guide:
-> [`frontend/README.md`](../frontend/README.md).
+> **Status:** ✅ Question-driven console (overview, sales, sellers, operations,
+> pipeline, orders). Run guide: [`frontend/README.md`](../frontend/README.md).
 
 ## What it is
 
-A thin operations console over the FastAPI backend — no business logic lives
-here. Prices, lifecycle transitions, stock decrements and audit rows are all
-enforced server-side (`backend/app/services/orders.py`); the UI only renders
-state and forwards intent. If the UI and the contract ever disagree, the
-backend wins.
+The consumption and decision layer of the data platform — it turns committed
+data into answers, not record browsers. Every section is organized around a
+business question (who drives revenue, who slips, what needs action, is data
+flowing), and every number comes from a business-oriented API endpoint
+(`backend/app/services/stats.py`), never from client-side crunching.
 
-## Pages
+Layer discipline (brief: metrics live in the analytical layer):
 
-| Route | Page | Backend calls |
+```
+OLTP / Gold models → FastAPI stats endpoints → TanStack Query → pages
+```
+
+The browser never holds Databricks credentials: lakehouse state on the
+Pipeline page is either computed live over OLTP (DQ mirror) or a labeled,
+dated validation snapshot — never faked live data.
+
+## Pages (each answers a question)
+
+| Route | Question | Backend calls |
 |---|---|---|
-| `/` | Overview — Gold KPI grid (revenue, AOV, return/delayed rates, stock-critical, Pareto), 90-day revenue chart, category + discount mix, top sellers, status split | `GET /stats/overview`, `/revenue-trend`, `/revenue-by-category`, `/discount-bands`, `/top-sellers`, `/pareto` |
-| `/pipeline` | Medallion flow — OLTP → Bronze → Silver → DQ gate → Gold stages, live DQ R1–R7 table, fulfillment split | `GET /stats/overview`, `/stats/dq-checks` |
-| `/orders` | Orders — status-filtered table, latest first | `GET /orders?delivery_status=` |
-| `/orders/:id` | Order detail — lines, totals, terminal-transition buttons (immutable notice on terminal states) | `GET /orders/{id}`, `PATCH /orders/{id}/status` |
-| `/new` | Create order — multi-line form | `POST /orders` |
+| `/` Overview | How is the business doing right now? | `/stats/overview`, `/revenue-trend`, `/pareto`, `/stats/city-performance`, `/stats/seller-performance` (attention strip) |
+| `/sales` | What drives revenue, and what is changing? | `/stats/category-trend`, `/stats/city-performance`, `/stats/discount-bands`, `/stats/seller-performance` |
+| `/sellers` | Who performs — and who needs attention? | `/stats/seller-performance` (flags: low rating, delays, returns) |
+| `/operations` | What needs action? | `/stats/city-performance`, `/stats/stock-critical`, `/stats/dq-checks` |
+| `/pipeline` | Is data flowing? | `/stats/overview`, `/stats/dq-checks` (+ dated backfill snapshot) |
+| `/orders`, `/orders/:id` | Operate: inspect / transition a single order | `GET /orders`, `GET /orders/{id}`, `PATCH /orders/{id}/status` |
+| `/new` | Operate: book an order (server prices it) | `POST /orders` |
 
 ## Data flow
 
@@ -44,8 +56,8 @@ lucide icons. Path alias `@/*` → `src/*` (wired in both `vite.config.ts` and
 
 ## Out of scope (later)
 
-- KPIs over Gold (revenue trends, stock-critical, funnels) → Phase 7 BI; the
-  dashboard deliberately shows only OLTP state today.
-- AuthN/Z → with the backend auth increment.
-- Backend coverage beyond orders (customers/sellers/products/inventory views) →
-  as those routers land.
+- Databricks-native BI dashboards (Phase 7) — this console mirrors Gold KPIs
+  from OLTP; the workspace dashboards query Gold directly.
+- ML targets (K11 churn, K12 return propensity, Phase 8) — endpoints and pages
+  plug into the existing stats → Query → page pattern when models land.
+- AuthN/Z — with the backend auth increment.

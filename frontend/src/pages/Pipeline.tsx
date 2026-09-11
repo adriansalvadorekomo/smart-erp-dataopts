@@ -1,16 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 import { Fragment } from "react";
-import { api, formatINR, formatPercent } from "@/lib/api";
+import { Link } from "react-router-dom";
+import { api, formatINR } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 /** Last full backfill validated on the workspace (docs/databricks-free-edition.md).
  * Static by design — the browser never holds workspace credentials. */
@@ -92,7 +85,7 @@ export default function Pipeline() {
       <div>
         <h1 className="text-[32px] font-semibold tracking-tight">Pipeline</h1>
         <p className="mt-1 text-[15px] text-muted-foreground">
-          Medallion flow · fail-fast gate · last full backfill {BACKFILL.at}
+          Is data flowing — source to Bronze to Silver through the gate to Gold.
         </p>
       </div>
 
@@ -108,63 +101,25 @@ export default function Pipeline() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="overflow-hidden border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-[15px] font-semibold">DQ gate over live OLTP</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-medium uppercase tracking-wide">Rule</TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase tracking-wide">Violations</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(dq.data ?? []).map((c) => (
-                  <TableRow key={c.rule}>
-                    <TableCell className="font-medium">{c.rule}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {c.violations === 0 ? (
-                        <span className="inline-flex items-center gap-1 text-[var(--success)]">
-                          <CheckCircle2 size={14} /> 0
-                        </span>
-                      ) : (
-                        <span className="font-semibold text-destructive">{c.violations.toLocaleString()}</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
         <Card className="border-border/60 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[15px] font-semibold">Fulfillment split</CardTitle>
+            <CardTitle className="text-[15px] font-semibold">Silver entities</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {o ? (
-              (Object.entries(o.by_status) as [string, number][]).map(([status, n]) => (
-                <div key={status} className="space-y-1.5">
-                  <div className="flex items-baseline justify-between text-[15px]">
-                    <span className="font-medium capitalize">{status.toLowerCase()}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {n.toLocaleString()} · {formatPercent(n / o.total_orders)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.max((n / o.total_orders) * 100, 1.5)}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-[15px] text-muted-foreground">Loading…</p>
-            )}
+          <CardContent>
+            <p className="text-[15px] text-muted-foreground">{BACKFILL.silver.join(" · ")}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-[15px] font-semibold">Gold marts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[15px] text-muted-foreground">{BACKFILL.gold.join(" · ")}</p>
+            <p className="mt-3 text-[15px]">
+              <Link to="/operations" className="text-primary hover:underline">
+                Rule-level gate status →
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -86,3 +86,24 @@ def test_gold_kpi_endpoints(client):
     checks = {c["rule"]: c["violations"] for c in client.get("/stats/dq-checks").json()}
     assert len(checks) == 11
     assert all(v == 0 for v in checks.values()), checks
+
+
+def test_business_endpoints(client):
+    _order(client, order_date="2024-04-01")
+
+    sellers = client.get("/stats/seller-performance").json()
+    assert sellers and sellers[0]["seller_id"] == "S_TEST"
+    for key in ("revenue", "lines", "avg_rating", "delayed_rate", "return_rate"):
+        assert key in sellers[0], key
+    assert sellers[0]["delayed_rate"] == 0.0  # single IN TRANSIT line
+
+    trend = client.get("/stats/category-trend", params={"months": 12}).json()
+    assert trend and {"month", "category", "revenue"} <= set(trend[0])
+    assert any(r["category"] == "Electronics" for r in trend)
+
+    critical = client.get("/stats/stock-critical").json()
+    assert isinstance(critical, list)  # fixture stock is 100 → empty here
+
+    cities = {c["city"]: c for c in client.get("/stats/city-performance").json()}
+    assert cities["Delhi"]["orders"] >= 1
+    assert cities["Delhi"]["revenue"] >= 900.00

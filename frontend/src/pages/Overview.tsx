@@ -9,17 +9,10 @@ import {
   YAxis,
 } from "recharts";
 import { Link } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
 import { api, formatINR, formatPercent, type DeliveryStatus } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/StatusPill";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 const STALE = 60_000;
 
@@ -33,36 +26,38 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   );
 }
 
-function Bar({ share, tone = "bg-primary" }: { share: number; tone?: string }) {
-  return (
-    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-      <div className={`h-full rounded-full ${tone}`} style={{ width: `${Math.max(share * 100, 1.5)}%` }} />
-    </div>
-  );
-}
-
 function monthTick(date: string): string {
-  const d = new Date(date + "T00:00:00");
-  return d.toLocaleString("en-US", { month: "short" });
+  return new Date(date + "T00:00:00").toLocaleString("en-US", { month: "short" });
 }
 
 export default function Overview() {
   const overview = useQuery({ queryKey: ["overview"], queryFn: api.overview, staleTime: STALE });
   const trend = useQuery({ queryKey: ["trend"], queryFn: () => api.trend(90), staleTime: STALE });
-  const categories = useQuery({ queryKey: ["categories"], queryFn: api.categories, staleTime: STALE });
-  const bands = useQuery({ queryKey: ["bands"], queryFn: api.bands, staleTime: STALE });
-  const sellers = useQuery({ queryKey: ["sellers"], queryFn: () => api.topSellers(8), staleTime: STALE });
   const pareto = useQuery({ queryKey: ["pareto"], queryFn: api.pareto, staleTime: STALE });
+  const cities = useQuery({ queryKey: ["cities"], queryFn: api.cities, staleTime: STALE });
+  const sellers = useQuery({ queryKey: ["sellers-att"], queryFn: () => api.sellers(20), staleTime: STALE });
 
   const o = overview.data;
-  const catTotal = (categories.data ?? []).reduce((s, c) => s + c.revenue, 0);
+  const worstCity = [...(cities.data ?? [])].sort((a, b) => b.delayed_rate - a.delayed_rate)[0];
+  const worstSeller = [...(sellers.data ?? [])].sort((a, b) => b.return_rate - a.return_rate)[0];
+  const attention = [
+    o && o.stock_critical > 0
+      ? { text: `${o.stock_critical.toLocaleString()} products need reordering`, to: "/operations" }
+      : null,
+    worstCity
+      ? { text: `${worstCity.city} delays ${formatPercent(worstCity.delayed_rate, 0)} of completed orders`, to: "/operations" }
+      : null,
+    worstSeller && worstSeller.return_rate > 0
+      ? { text: `${worstSeller.seller_id} returns ${formatPercent(worstSeller.return_rate, 0)} of lines`, to: "/sellers" }
+      : null,
+  ].filter((a): a is { text: string; to: string } => a !== null);
 
   return (
     <div className="space-y-10">
       <div>
         <h1 className="text-[32px] font-semibold tracking-tight">Overview</h1>
         <p className="mt-1 text-[15px] text-muted-foreground">
-          Gold KPIs over committed orders · business-model §5
+          The business pulse — Gold KPIs over committed orders.
         </p>
       </div>
 
@@ -79,9 +74,22 @@ export default function Overview() {
         />
       </div>
 
+      {attention.length > 0 && (
+        <Card className="border-border/60 shadow-sm">
+          <CardContent className="divide-y divide-border/60 p-0">
+            {attention.map((a) => (
+              <Link key={a.text} to={a.to} className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-muted/50">
+                <span className="text-[15px] font-medium">{a.text}</span>
+                <ArrowUpRight size={16} className="text-muted-foreground" />
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-[15px] font-semibold">Revenue · trailing 90 days</CardTitle>
+          <CardTitle className="text-[15px] font-semibold">Revenue · last 90 selling days</CardTitle>
         </CardHeader>
         <CardContent className="h-64">
           {trend.data ? (
@@ -116,80 +124,6 @@ export default function Overview() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-[15px] font-semibold">Revenue by category</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {(categories.data ?? []).map((c) => (
-              <div key={c.category} className="space-y-1.5">
-                <div className="flex items-baseline justify-between text-[15px]">
-                  <span className="font-medium">{c.category}</span>
-                  <span className="text-muted-foreground tabular-nums">
-                    {formatINR(c.revenue, 0)} · {formatPercent(c.revenue / (catTotal || 1), 0)}
-                  </span>
-                </div>
-                <Bar share={c.revenue / (catTotal || 1)} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-[15px] font-semibold">Discount effectiveness</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {(bands.data ?? []).map((b) => {
-              const max = Math.max(...(bands.data ?? []).map((x) => x.revenue), 1);
-              return (
-                <div key={b.band} className="space-y-1.5">
-                  <div className="flex items-baseline justify-between text-[15px]">
-                    <span className="font-medium tabular-nums">{b.band}% off</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {formatINR(b.revenue, 0)} · {b.lines.toLocaleString()} lines
-                    </span>
-                  </div>
-                  <Bar share={b.revenue / max} tone="bg-secondary-foreground/70" />
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="overflow-hidden border-border/60 shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-[15px] font-semibold">Top sellers</CardTitle>
-          <Link to="/orders" className="text-[15px] text-primary hover:underline">
-            All orders →
-          </Link>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-medium uppercase tracking-wide">Seller</TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase tracking-wide">Lines</TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase tracking-wide">Rating</TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase tracking-wide">Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(sellers.data ?? []).map((s) => (
-                <TableRow key={s.seller_id}>
-                  <TableCell className="font-medium">{s.seller_id}</TableCell>
-                  <TableCell className="text-right tabular-nums">{s.lines.toLocaleString()}</TableCell>
-                  <TableCell className="text-right tabular-nums">{s.avg_rating.toFixed(1)}</TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">{formatINR(s.revenue, 0)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
       <div className="flex flex-wrap gap-2">
         {(o ? Object.entries(o.by_status) : []).map(([status, n]) => (
           <span key={status} className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -198,6 +132,11 @@ export default function Overview() {
           </span>
         ))}
       </div>
+
+      <p className="text-[13px] text-muted-foreground">
+        Revenue drivers live under <Link to="/sales" className="text-primary hover:underline">Sales</Link> ·
+        seller quality under <Link to="/sellers" className="text-primary hover:underline">Sellers</Link>
+      </p>
     </div>
   );
 }
