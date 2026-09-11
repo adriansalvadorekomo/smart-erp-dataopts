@@ -116,8 +116,42 @@ jobs:
           "SELECT count(*) FROM pg_constraint
            WHERE conname LIKE '%final_price%' OR conname LIKE '%delivery_status%';"
 
+  backend-test:
+    name: Backend — pytest (Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smart
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: ci
+      PGPASSWORD: ci
+      PGDATABASE: smart
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: Run backend tests (Alembic migrate + orders API on throwaway DB)
+        run: uv run pytest backend/tests -q
+
   seed-acceptance-note:
-    name: Docs — seed acceptance lives on feat/3-ingestion until merged
+    name: Docs — OLTP contract stays consistent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,6 +159,6 @@ jobs:
         run: |
           grep -q 'final_price' docs/business-model.md
           grep -q 'lakehouse' README.md
-          # Full 1M-row seed acceptance runs on the feat/3-ingestion line
-          # (scripts/seed/ is not on main yet); the lakehouse DQ rules R1–R9
-          # mirror its checks so the contract cannot drift (docs/lakehouse.md §7).
+          # Full 1M-row seed acceptance needs the git-ignored CSV, so it runs
+          # locally (scripts/seed/README.md), not here; the lakehouse DQ rules
+          # R1–R9 mirror its checks so the contract cannot drift (docs/lakehouse.md §7).
