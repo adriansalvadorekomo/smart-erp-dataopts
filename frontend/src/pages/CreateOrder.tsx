@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { ApiError, api, type OrderItemCreate } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 const EMPTY_LINE: OrderItemCreate = {
@@ -55,39 +57,60 @@ export default function CreateOrder() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>New order</CardTitle>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-6">
+      <Link to="/" className="inline-flex items-center gap-1 text-[15px] text-primary hover:underline">
+        <ArrowLeft size={16} /> Orders
+      </Link>
+      <div>
+        <h1 className="text-[32px] font-semibold tracking-tight">New order</h1>
+        <p className="mt-1 text-[15px] text-muted-foreground">
           Totals are computed server-side — the API never trusts client money.
         </p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input placeholder="Customer ID (e.g. U_TEST)" value={customerId} onChange={(e) => setCustomerId(e.target.value)} required />
-            <Input placeholder="Ship-to city" value={city} onChange={(e) => setCity(e.target.value)} required />
-          </div>
-          {lines.map((l, i) => (
-            <div key={i} className="grid gap-2 md:grid-cols-5">
-              <Input placeholder="Product" value={l.product_id} onChange={(e) => setLine(i, { product_id: e.target.value })} required />
-              <Input placeholder="Seller" value={l.seller_id} onChange={(e) => setLine(i, { seller_id: e.target.value })} required />
-              <Input type="number" min={1} placeholder="Qty" value={l.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) })} required />
-              <Input type="number" min={0} step="0.01" placeholder="Unit ₹" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: Number(e.target.value) })} required />
-              <Input type="number" min={0} max={70} step="0.01" placeholder="Disc %" value={l.discount_pct} onChange={(e) => setLine(i, { discount_pct: Number(e.target.value) })} />
+      </div>
+
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="pt-6">
+          <form onSubmit={submit} className="space-y-5">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Customer ID"
+                aria-label="Customer ID"
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                required
+              />
+              <Input
+                placeholder="Ship-to city"
+                aria-label="Ship-to city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+              />
             </div>
-          ))}
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setLines((ls) => [...ls, { ...EMPTY_LINE }])}>
-              Add line
-            </Button>
-            <Button type="submit" disabled={busy}>
-              {busy ? "Creating…" : "Create order"}
-            </Button>
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
-      </CardContent>
-    </Card>
+            <div className="space-y-2">
+              <p className="text-[13px] font-medium text-muted-foreground">Lines</p>
+              {lines.map((l, i) => (
+                <div key={i} className="grid gap-2 md:grid-cols-5">
+                  <Input placeholder="Product" aria-label="Product" value={l.product_id} onChange={(e) => setLine(i, { product_id: e.target.value })} required />
+                  <Input placeholder="Seller" aria-label="Seller" value={l.seller_id} onChange={(e) => setLine(i, { seller_id: e.target.value })} required />
+                  <Input type="number" min={1} placeholder="Qty" aria-label="Quantity" value={l.quantity} onChange={(e) => setLine(i, { quantity: Number(e.target.value) })} required />
+                  <Input type="number" min={0} step="0.01" placeholder="Unit ₹" aria-label="Unit price" value={l.unit_price} onChange={(e) => setLine(i, { unit_price: Number(e.target.value) })} required />
+                  <Input type="number" min={0} max={70} step="0.01" placeholder="Disc %" aria-label="Discount percent" value={l.discount_pct} onChange={(e) => setLine(i, { discount_pct: Number(e.target.value) })} />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="rounded-full" onClick={() => setLines((ls) => [...ls, { ...EMPTY_LINE }])}>
+                Add line
+              </Button>
+              <Button type="submit" className="rounded-full" disabled={busy}>
+                {busy ? "Creating…" : "Create order"}
+              </Button>
+            </div>
+            {error && <p className="text-[15px] text-destructive">{error}</p>}
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
