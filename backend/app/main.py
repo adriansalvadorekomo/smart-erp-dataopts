@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from backend.app.api.orders import router as orders_router
+from backend.app.api.stats import router as stats_router
 from backend.app.core.db import get_session_factory
 
 app = FastAPI(title="Smart-ERP", version="0.1.0")
@@ -31,6 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(orders_router)
+app.include_router(stats_router)
 
 
 @app.get("/health")

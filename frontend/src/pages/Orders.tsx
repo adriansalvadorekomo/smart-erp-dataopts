@@ -16,26 +16,14 @@ import {
 
 const FILTERS: (DeliveryStatus | "ALL")[] = ["ALL", "IN TRANSIT", "DELIVERED", "DELAYED", "RETURNED"];
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-[28px] font-semibold tracking-tight tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-export default function Dashboard() {
+export default function Orders() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("ALL");
-  const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const orders = useQuery({
     queryKey: ["orders", filter],
     queryFn: () =>
       api.listOrders(filter === "ALL" ? undefined : { delivery_status: filter }),
+    staleTime: 30_000,
   });
-  const revenue = orders.data
-    ? orders.data.reduce((s, o) => s + o.items.reduce((t, i) => t + i.final_price, 0), 0)
-    : null;
 
   return (
     <div className="space-y-8">
@@ -43,13 +31,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-[32px] font-semibold tracking-tight">Orders</h1>
           <p className="mt-1 text-[15px] text-muted-foreground">
-            {health.data ? (
-              <>Backend connected · database {health.data.db}</>
-            ) : health.isLoading ? (
-              "Connecting…"
-            ) : (
-              "Backend unreachable — start it first."
-            )}
+            {orders.data ? `${orders.data.length} shown · latest first` : "Latest first"}
           </p>
         </div>
         <Link
@@ -58,11 +40,6 @@ export default function Dashboard() {
         >
           New order
         </Link>
-      </div>
-
-      <div className="grid grid-cols-2 gap-8">
-        <Stat label="Orders" value={orders.data ? String(orders.data.length) : "—"} />
-        <Stat label="Revenue" value={revenue !== null ? formatINR(revenue) : "—"} />
       </div>
 
       <div className="inline-flex rounded-full bg-secondary p-1">

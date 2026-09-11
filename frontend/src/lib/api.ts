@@ -87,8 +87,61 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ delivery_status }),
     }),
+  overview: () => request<Overview>("/stats/overview"),
+  trend: (days = 90) => request<TrendPoint[]>(`/stats/revenue-trend?days=${days}`),
+  categories: () => request<CategoryShare[]>("/stats/revenue-by-category"),
+  bands: () => request<DiscountBand[]>("/stats/discount-bands"),
+  topSellers: (limit = 8) => request<TopSeller[]>(`/stats/top-sellers?limit=${limit}`),
+  pareto: () => request<{ top20_share: number }>("/stats/pareto"),
+  dqChecks: () => request<DQCheck[]>("/stats/dq-checks"),
 };
 
-export function formatINR(n: number): string {
-  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function formatPercent(ratio: number, digits = 1): string {
+  return `${(ratio * 100).toFixed(digits)}%`;
+}
+
+export interface Overview {
+  total_orders: number;
+  revenue: number;
+  aov: number;
+  avg_discount_pct: number;
+  return_rate: number;
+  delayed_rate: number;
+  in_transit: number;
+  stock_critical: number;
+  by_status: Record<string, number>;
+}
+
+export interface TrendPoint {
+  date: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface CategoryShare {
+  category: string;
+  revenue: number;
+  lines: number;
+}
+
+export interface DiscountBand {
+  band: string;
+  lines: number;
+  revenue: number;
+}
+
+export interface TopSeller {
+  seller_id: string;
+  revenue: number;
+  lines: number;
+  avg_rating: number;
+}
+
+export interface DQCheck {
+  rule: string;
+  violations: number;
+}
+
+export function formatINR(n: number, digits = 2): string {
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }

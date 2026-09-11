@@ -58,7 +58,7 @@ export default function CreateOrder() {
 
   return (
     <div className="space-y-6">
-      <Link to="/" className="inline-flex items-center gap-1 text-[15px] text-primary hover:underline">
+      <Link to="/orders" className="inline-flex items-center gap-1 text-[15px] text-primary hover:underline">
         <ArrowLeft size={16} /> Orders
       </Link>
       <div>
