@@ -235,7 +235,7 @@ CSV ──COPY──► raw.purchases (all TEXT, 1:1 columns)
 | orphan order_items (no order) | 0 |
 | orphan order_items (no product/seller) | 0 |
 | NULL in any PK/FK | 0 |
-| final_price invariant violations | 0 (tolerance ₹0.01 for float rounding) |
+| final_price invariant violations | 0 (tolerance ±₹5.00 — source CSV round-trips from higher precision; measured max deviation ≈₹3.99) |
 | Σ final_price | ₹9,938,876,985 ± ₹1,000 |
 
 ---

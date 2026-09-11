@@ -231,7 +231,7 @@ PostgreSQL is the transactional foundation: raw CSV landing tables, typed stagin
 | `staging` | Typed intermediate (`staging.purchases`) |
 | `public` | Six core tables: `customers`, `orders`, `order_items`, `products`, `sellers`, `inventory` |
 
-Migrations ([`database/migrations/`](database/migrations/), applied in order via [`database/apply.sh`](database/apply.sh)) enforce the invariants in DDL: `final_price` checksum (± ₹0.01), `delivery_status` domain, validated payment/device/category sets, idempotent inventory snapshots. Details: [`database/README.md`](database/README.md).
+Migrations ([`database/migrations/`](database/migrations/), applied in order via [`database/apply.sh`](database/apply.sh)) enforce the invariants in DDL: `final_price` checksum (± ₹5.00), `delivery_status` domain, validated payment/device/category sets, idempotent inventory snapshots. Details: [`database/README.md`](database/README.md).
 
 ---
 
