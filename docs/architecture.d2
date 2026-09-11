@@ -1,102 +1,97 @@
 # DataOps Lakehouse — data-flow architecture (D2 source)
 # Render: d2 docs/architecture.d2 docs/architecture.svg
-# Also see docs/architecture.dot (Graphviz equivalent).
+# Also see docs/architecture.dot (Graphviz) and docs/architecture.mmd (Mermaid).
 
 direction: right
 
-classes: {
-  store: {
+"Source Systems": {
+  postgres: "PostgreSQL OLTP\ncustomers · sellers · products\ninventory · orders · order_items" {
     style: {
       fill: "#E8EEF7"
       stroke: "#4169E1"
-      border-radius: 8
     }
   }
-  lake: {
+}
+
+"Lakehouse (Medallion Architecture)": {
+  direction: right
+
+  bronze: "Bronze\nraw Delta (COPY INTO)" {
     style: {
       fill: "#FDECEA"
       stroke: "#FF3621"
-      border-radius: 8
     }
   }
-  serve: {
+
+  silver: "Silver\n6 clean entities" {
+    style: {
+      fill: "#FDECEA"
+      stroke: "#FF3621"
+    }
+  }
+
+  dq: "DQ gate R1–R9\nfail-fast" {
+    style: {
+      fill: "#FDECEA"
+      stroke: "#FF3621"
+    }
+  }
+
+  gold: "Gold marts\nfact_sales · sales_daily\ncustomer_360 · inventory_kpis" {
+    style: {
+      fill: "#FDECEA"
+      stroke: "#FF3621"
+    }
+  }
+
+  bronze -> silver: standardize
+  silver -> dq: validate
+  dq -> gold: certified
+}
+
+"Consumption Layers": {
+  bi: "BI\nDatabricks SQL" {
     style: {
       fill: "#E6F4EA"
       stroke: "#1A7F37"
-      border-radius: 8
     }
   }
-  ops: {
+
+  ml: "ML\nXGBoost · churn · MLflow" {
+    style: {
+      fill: "#E6F4EA"
+      stroke: "#1A7F37"
+    }
+  }
+
+  ai: "AI\nGenie / RAG over Gold" {
+    style: {
+      fill: "#E6F4EA"
+      stroke: "#1A7F37"
+    }
+  }
+}
+
+"Operational Components": {
+  iac: "Terraform\nworkspace assets" {
     style: {
       fill: "#F3EAF7"
       stroke: "#7B42BC"
-      border-radius: 8
+    }
+  }
+
+  ci: "PR-gated CI\ntests · sql guards · validate" {
+    style: {
+      fill: "#F3EAF7"
+      stroke: "#7B42BC"
     }
   }
 }
 
-postgres: "PostgreSQL OLTP\ncustomers · sellers · products\ninventory · orders · order_items" {
-  class: store
-}
-
-bronze: "Bronze\nraw Delta (COPY INTO)" {
-  class: lake
-}
-
-silver: "Silver\n6 clean entities" {
-  class: lake
-}
-
-dq: "DQ gate R1–R9\nfail-fast" {
-  class: lake
-  style: {
-    stroke-width: 3
-  }
-}
-
-gold: "Gold marts\nfact_sales · sales_daily\ncustomer_360 · inventory_kpis" {
-  class: lake
-}
-
-bi: "BI\nDatabricks SQL" {
-  class: serve
-}
-
-ml: "ML\nXGBoost · churn · MLflow" {
-  class: serve
-}
-
-ai: "AI\nGenie / RAG over Gold" {
-  class: serve
-}
-
-iac: "Terraform\nworkspace assets" {
-  class: ops
-}
-
-ci: "PR-gated CI\ntests · sql guards · validate" {
-  class: ops
-}
-
-postgres -> bronze: snapshot
-bronze -> silver: standardize
-silver -> dq: validate
-dq -> gold: certified
-gold -> bi
-gold -> ml
-gold -> ai
-iac -> bronze: provisions {
-  style: {
-    stroke-dash: 4
-  }
-}
-iac -> gold: provisions {
-  style: {
-    stroke-dash: 4
-  }
-}
-ci -> dq: gates {
-  style: {
-    stroke-dash: 4
-  }
-}
+"Source Systems".postgres -> "Lakehouse (Medallion Architecture)".bronze: snapshot
+"Lakehouse (Medallion Architecture)".gold -> "Consumption Layers".bi
+"Lakehouse (Medallion Architecture)".gold -> "Consumption Layers".ml
+"Lakehouse (Medallion Architecture)".gold -> "Consumption Layers".ai
+"Operational Components".iac -> "Lakehouse (Medallion Architecture)".bronze: provisions
+"Operational Components".iac -> "Lakehouse (Medallion Architecture)".gold: provisions
+"Operational Components".ci -> "Lakehouse (Medallion Architecture)".dq: gates
