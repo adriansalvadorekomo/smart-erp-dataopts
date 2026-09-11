@@ -322,7 +322,7 @@ Technology choices are rulings, not accidents — full log in [`docs/decisions.m
 | 2 | **Database** — PostgreSQL with 6 core tables + `raw`/`staging` — [database/](database/) | 🟢 Done |
 | 3 | **Seed Data** — Ingest 1M-row Amazon-style dataset (CSV → `raw` schema → normalized tables, with acceptance checks) | 🟢 Done |
 | 4 | **Backend** — FastAPI + SQLAlchemy with atomic transactions, audit logging, Pydantic validation | 🟢 Done |
-| 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟡 Planned |
+| 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟢 Done (PR pending) |
 | 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟡 Skeleton (1M backfill validated) |
 | 7 | **BI** — Databricks SQL over Gold (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
 | 8 | **ML** — Return propensity + customer churn (scikit-learn/XGBoost), MLflow-native tracking | 🟡 Planned |
