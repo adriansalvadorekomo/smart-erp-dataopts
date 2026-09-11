@@ -1,0 +1,210 @@
+{
+ "datasets": [
+  {
+   "name": "ds_kpis",
+   "displayName": "Revenue KPIs",
+   "queryLines": [
+    "-- BI \u00b7 Revenue overview \u2192 headline KPIs (K1 revenue, K2 AOV).\n-- Tile: number counters. Catalog bound by the dashboard (parameter `catalog`).\n-- Read-only over Gold; refresh = re-run (Gold rebuilds come from the job).\n\nSELECT\n  SUM(final_price) AS revenue,\n  COUNT(*) AS orders,\n  SUM(final_price) / COUNT(*) AS aov\nFROM workspace.gold.fact_sales;"
+   ]
+  },
+  {
+   "name": "ds_trend",
+   "displayName": "Monthly trend",
+   "queryLines": [
+    "-- BI \u00b7 Revenue overview \u2192 monthly trend (K5 slices).\n-- Tile: line/bar over order_month. Parameter `catalog` bound by the dashboard.\n\nSELECT\n  order_month,\n  SUM(final_price) AS revenue,\n  COUNT(*) AS orders,\n  SUM(final_price) / COUNT(*) AS aov\nFROM workspace.gold.fact_sales\nGROUP BY order_month\nORDER BY order_month;"
+   ]
+  },
+  {
+   "name": "ds_city",
+   "displayName": "Revenue by city",
+   "queryLines": [
+    "-- BI \u00b7 Revenue overview \u2192 revenue by ship-to city (K5).\n-- Tile: bar, one series. Parameter `catalog` bound by the dashboard.\n\nSELECT\n  ship_to_city,\n  SUM(final_price) AS revenue,\n  COUNT(*) AS orders\nFROM workspace.gold.fact_sales\nGROUP BY ship_to_city\nORDER BY revenue DESC;"
+   ]
+  },
+  {
+   "name": "ds_cat",
+   "displayName": "Revenue by category",
+   "queryLines": [
+    "-- BI \u00b7 Revenue overview \u2192 revenue by category (K5).\n-- Tile: bar or donut. Parameter `catalog` bound by the dashboard.\n\nSELECT\n  category,\n  SUM(final_price) AS revenue,\n  COUNT(*) AS lines\nFROM workspace.gold.fact_sales\nGROUP BY category\nORDER BY revenue DESC;"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "pg_main",
+   "displayName": "Revenue",
+   "layout": [
+    {
+     "widgetName": "w_kpis",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 0,
+      "posWidth": 12,
+      "posHeight": 4
+     }
+    },
+    {
+     "widgetName": "w_trend",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 4,
+      "posWidth": 12,
+      "posHeight": 8
+     }
+    },
+    {
+     "widgetName": "w_city",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 12,
+      "posWidth": 12,
+      "posHeight": 8
+     }
+    },
+    {
+     "widgetName": "w_cat",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 20,
+      "posWidth": 12,
+      "posHeight": 8
+     }
+    }
+   ],
+   "widgets": [
+    {
+     "name": "w_kpis",
+     "title": "Headline KPIs",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_kpis",
+        "fields": [
+         {
+          "name": "revenue",
+          "expression": "`revenue`"
+         },
+         {
+          "name": "orders",
+          "expression": "`orders`"
+         },
+         {
+          "name": "aov",
+          "expression": "`aov`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    },
+    {
+     "name": "w_trend",
+     "title": "Monthly trend",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_trend",
+        "fields": [
+         {
+          "name": "order_month",
+          "expression": "`order_month`"
+         },
+         {
+          "name": "revenue",
+          "expression": "`revenue`"
+         },
+         {
+          "name": "orders",
+          "expression": "`orders`"
+         },
+         {
+          "name": "aov",
+          "expression": "`aov`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    },
+    {
+     "name": "w_city",
+     "title": "By city",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_city",
+        "fields": [
+         {
+          "name": "ship_to_city",
+          "expression": "`ship_to_city`"
+         },
+         {
+          "name": "revenue",
+          "expression": "`revenue`"
+         },
+         {
+          "name": "orders",
+          "expression": "`orders`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    },
+    {
+     "name": "w_cat",
+     "title": "By category",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_cat",
+        "fields": [
+         {
+          "name": "category",
+          "expression": "`category`"
+         },
+         {
+          "name": "revenue",
+          "expression": "`revenue`"
+         },
+         {
+          "name": "lines",
+          "expression": "`lines`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    }
+   ]
+  }
+ ]
+}

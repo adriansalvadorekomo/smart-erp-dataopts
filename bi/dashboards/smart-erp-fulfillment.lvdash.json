@@ -1,0 +1,110 @@
+{
+ "datasets": [
+  {
+   "name": "ds_funnel",
+   "displayName": "Funnel counts",
+   "queryLines": [
+    "-- BI \u00b7 Fulfillment funnel \u2192 counts + revenue per delivery status.\n-- Tile: funnel/bar. Feeds the K3/K4 rate tiles below; baselines in\n-- docs/business-model.md \u00a75 (return 11.60%, delayed \u224850% of completed).\n\nSELECT\n  delivery_status,\n  COUNT(*) AS orders,\n  SUM(final_price) AS revenue\nFROM workspace.gold.fact_sales\nGROUP BY delivery_status\nORDER BY orders DESC;"
+   ]
+  },
+  {
+   "name": "ds_rates",
+   "displayName": "Return and delayed rates",
+   "queryLines": [
+    "-- BI \u00b7 Fulfillment funnel \u2192 headline rates (K3 return rate, K4 delayed rate).\n-- Tile: number counters. K3 = RETURNED / all; K4 = DELAYED / completed\n-- (DELIVERED + DELAYED).\n\nSELECT\n  SUM(CASE WHEN delivery_status = 'RETURNED' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS return_rate,\n  SUM(CASE WHEN delivery_status = 'DELAYED' THEN 1 ELSE 0 END) * 1.0\n    / NULLIF(SUM(CASE WHEN delivery_status IN ('DELIVERED', 'DELAYED') THEN 1 ELSE 0 END), 0) AS delayed_rate,\n  SUM(CASE WHEN delivery_status = 'IN TRANSIT' THEN 1 ELSE 0 END) AS in_transit\nFROM workspace.gold.fact_sales;"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "pg_main",
+   "displayName": "Fulfillment",
+   "layout": [
+    {
+     "widgetName": "w_rates",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 0,
+      "posWidth": 12,
+      "posHeight": 4
+     }
+    },
+    {
+     "widgetName": "w_funnel",
+     "widgetPos": {
+      "posX": 0,
+      "posY": 4,
+      "posWidth": 12,
+      "posHeight": 8
+     }
+    }
+   ],
+   "widgets": [
+    {
+     "name": "w_rates",
+     "title": "Rates",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_rates",
+        "fields": [
+         {
+          "name": "return_rate",
+          "expression": "`return_rate`"
+         },
+         {
+          "name": "delayed_rate",
+          "expression": "`delayed_rate`"
+         },
+         {
+          "name": "in_transit",
+          "expression": "`in_transit`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    },
+    {
+     "name": "w_funnel",
+     "title": "Status funnel",
+     "description": "",
+     "queries": [
+      {
+       "name": "main",
+       "query": {
+        "datasetName": "ds_funnel",
+        "fields": [
+         {
+          "name": "delivery_status",
+          "expression": "`delivery_status`"
+         },
+         {
+          "name": "orders",
+          "expression": "`orders`"
+         },
+         {
+          "name": "revenue",
+          "expression": "`revenue`"
+         }
+        ],
+        "disaggregated": true
+       }
+      }
+     ],
+     "spec": {
+      "version": "2",
+      "widgetType": "table"
+     }
+    }
+   ]
+  }
+ ]
+}
