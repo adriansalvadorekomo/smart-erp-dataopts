@@ -20,58 +20,78 @@
 
 ## Architecture
 
+### Overall Architecture Diagram
+
 ![Lakehouse data-flow architecture](docs/architecture.svg)
 
 *PostgreSQL serves transactions; Databricks serves analytics. Bronze preserves
 raw history, Silver standardizes entities, Gold serves KPIs. Full contract:
 [`docs/lakehouse.md`](docs/lakehouse.md), decisions: [`docs/decisions.md`](docs/decisions.md).*
 
-<details>
-<summary><b>Diagram sources (D2 · Graphviz)</b></summary>
+### Architecture Diagram Sources
 
-- [`docs/architecture.d2`](docs/architecture.d2) — render with `d2 docs/architecture.d2 docs/architecture.svg`
-- [`docs/architecture.dot`](docs/architecture.dot) — render with `dot -Tsvg docs/architecture.dot -o docs/architecture-gv.svg`
+The architecture diagrams are maintained in two text-based formats — version-controlled, easy to update, with SVG output committed for direct viewing.
 
-```d2
-direction: right
+- **D2 source** — [`docs/architecture.d2`](docs/architecture.d2), the preferred format for readability:
+  `d2 docs/architecture.d2 docs/architecture.svg`
+- **Graphviz (DOT) source** — [`docs/architecture.dot`](docs/architecture.dot), for broader compatibility:
+  `dot -Tsvg docs/architecture.dot -o docs/architecture-gv.svg`
 
-postgres: "PostgreSQL OLTP\ncustomers · sellers · products\ninventory · orders · order_items"
-bronze: "Bronze\nraw Delta (COPY INTO)"
-silver: "Silver\n6 clean entities"
-dq: "DQ gate R1–R9\nfail-fast"
-gold: "Gold marts\nfact_sales · sales_daily\ncustomer_360 · inventory_kpis"
-bi: "BI\nDatabricks SQL"
-ml: "ML\nXGBoost · churn · MLflow"
-ai: "AI\nGenie / RAG over Gold"
-iac: "Terraform\nworkspace assets"
-ci: "PR-gated CI\ntests · sql guards · validate"
+### End-to-End Data Flow
 
-postgres -> bronze: snapshot
-bronze -> silver: standardize
-silver -> dq: validate
-dq -> gold: certified
-gold -> bi
-gold -> ml
-gold -> ai
-iac -> bronze: provisions
-iac -> gold: provisions
-ci -> dq: gates
-```
+The pipeline implements a medallion architecture — Bronze → Silver → DQ gate → Gold — so only high-quality, reliable data reaches downstream BI, ML, and AI consumers.
 
-```dot
-digraph lakehouse {
-  rankdir=LR;
-  postgres -> bronze [label="snapshot"];
-  bronze -> silver [label="standardize"];
-  silver -> dq [label="validate"];
-  dq -> gold [label="certified"];
-  gold -> bi; gold -> ml; gold -> ai;
-  iac -> bronze [style=dashed]; iac -> gold [style=dashed];
-  ci -> dq [style=dashed];
-}
-```
+#### PostgreSQL OLTP
 
-</details>
+The journey begins with the PostgreSQL OLTP database, the primary source for operational transactions: customers, sellers, products, inventory, orders, and order items.
+
+#### Bronze Layer — Raw Ingestion
+
+Raw, immutable copies of source data, preserving original schema and types for re-processing and auditing.
+
+- **Ingestion method** — idempotent `COPY INTO` into Delta tables ([`lakehouse/src/bronze/ingest.py`](lakehouse/src/bronze/ingest.py))
+- **Tables** — e.g. `bronze.raw_purchases` mirrors the OLTP purchases
+
+#### Silver Layer — Standardized Entities
+
+Cleansed, enterprise-wide entities conformed to a consistent schema via [`lakehouse/src/silver/transform.py`](lakehouse/src/silver/transform.py).
+
+- **6 clean entities**, with Title-Case enums normalized (delivery statuses, payment methods, devices, categories) and the `final_price_ok` money invariant enforced on every order line
+
+#### Data Quality Gate (R1–R9)
+
+A fail-fast gate that blocks promotion to Gold when any critical rule fails.
+
+- **Rules** — [`lakehouse/src/quality/rules.py`](lakehouse/src/quality/rules.py) (R1 no-NULL keys, R2 uniqueness, R3 FK integrity, R4 money invariant, R5+ enum conformance, …)
+- **Runner** — [`lakehouse/src/quality/runner.py`](lakehouse/src/quality/runner.py), executed by the [`03_dq_gate`](lakehouse/notebooks/03_dq_gate.py) notebook
+
+#### Gold Layer — Marts & SQL
+
+Aggregated, denormalized marts optimized for reporting and analytics, defined in SQL and built by the [`04_gold_build`](lakehouse/notebooks/04_gold_build.py) notebook.
+
+- **Marts** — `fact_sales`, `sales_daily`, `customer_360`, `inventory_kpis` ([`lakehouse/sql/gold/`](lakehouse/sql/gold/))
+
+#### Consumption Layers — BI, ML, AI
+
+- **BI** — Databricks SQL dashboards and reporting over Gold
+- **ML** — Gold feeds models such as XGBoost churn prediction, tracked in MLflow
+- **AI** — Genie / RAG grounded on governed Gold
+
+#### Operational Components
+
+- **Terraform** — provisions workspace assets (Unity Catalog schemas, landing volumes) for Bronze and Gold ([`infra/`](infra/))
+- **PR-gated CI** — lakehouse tests, SQL guards, `terraform validate`; gates the DQ process so only quality-checked changes merge
+
+### Data Flow with Code Entities
+
+| Component | Code entity |
+|---|---|
+| Bronze ingestion (`COPY INTO`) | [`lakehouse/src/bronze/ingest.py`](lakehouse/src/bronze/ingest.py) · notebook [`01_bronze_backfill`](lakehouse/notebooks/01_bronze_backfill.py) |
+| Silver transformation (6 entities) | [`lakehouse/src/silver/transform.py`](lakehouse/src/silver/transform.py) · notebook [`02_silver_build`](lakehouse/notebooks/02_silver_build.py) |
+| DQ gate R1–R9 (fail-fast) | [`lakehouse/src/quality/rules.py`](lakehouse/src/quality/rules.py) · [`lakehouse/src/quality/runner.py`](lakehouse/src/quality/runner.py) · notebook [`03_dq_gate`](lakehouse/notebooks/03_dq_gate.py) |
+| Gold marts (SQL) | [`lakehouse/sql/gold/`](lakehouse/sql/gold/) · [`lakehouse/src/gold/models.py`](lakehouse/src/gold/models.py) · notebook [`04_gold_build`](lakehouse/notebooks/04_gold_build.py) |
+| Orchestration | [`lakehouse/workflows/`](lakehouse/workflows/) (Databricks `smart-erp-medallion` job) |
+| Local verification | [`lakehouse/local_run.py`](lakehouse/local_run.py) · [`lakehouse/tests/`](lakehouse/tests/) |
 
 ---
 
