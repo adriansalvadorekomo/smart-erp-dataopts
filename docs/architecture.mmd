@@ -1,0 +1,40 @@
+%% DataOps Lakehouse — system-design flow (Mermaid source)
+%% Rendered natively by GitHub from the README code block.
+%% Also see docs/architecture.d2 (D2) and docs/architecture.dot (Graphviz).
+
+flowchart TB
+    subgraph OLTP["🗄️ OLTP — PostgreSQL"]
+        PG[("PostgreSQL OLTP<br/>customers · sellers · products<br/>inventory · orders · order_items")]
+    end
+
+    subgraph MEDALLION["🧱 Medallion Lakehouse — Databricks"]
+        BR[("Bronze<br/>raw Delta · COPY INTO<br/>bronze.raw_purchases")]
+        SI[("Silver<br/>6 clean entities<br/>transform.py")]
+        DQ{"DQ Gate R1–R9<br/>fail-fast · rules.py"}
+        GO[("Gold marts<br/>fact_sales · sales_daily<br/>customer_360 · inventory_kpis")]
+    end
+
+    subgraph SERVE["📊 Consumption"]
+        BI("BI<br/>Databricks SQL")
+        ML("ML<br/>XGBoost · churn · MLflow")
+        AI("AI<br/>Genie / RAG over Gold")
+    end
+
+    subgraph OPS["⚙️ Operations"]
+        TF(["Terraform<br/>workspace assets"])
+        CI(["PR-gated CI<br/>tests · SQL guards · validate"])
+        WF(["Workflow<br/>smart-erp-medallion"])
+    end
+
+    PG -->|"snapshot"| BR
+    BR -->|"standardize"| SI
+    SI -->|"validate"| DQ
+    DQ -->|"certified"| GO
+    GO --> BI
+    GO --> ML
+    GO --> AI
+    TF -.->|"provisions"| BR
+    TF -.->|"provisions"| GO
+    CI -.->|"gates"| DQ
+    WF -.->|"orchestrates"| BR
+    WF -.->|"orchestrates"| GO

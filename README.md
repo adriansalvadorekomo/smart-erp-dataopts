@@ -72,14 +72,54 @@ Along the way it taught me the unglamorous lessons that matter: contracts before
 
 ![Lakehouse data-flow architecture](docs/architecture.svg)
 
+```mermaid
+flowchart TB
+    subgraph OLTP["🗄️ OLTP — PostgreSQL"]
+        PG[("PostgreSQL OLTP<br/>customers · sellers · products<br/>inventory · orders · order_items")]
+    end
+
+    subgraph MEDALLION["🧱 Medallion Lakehouse — Databricks"]
+        BR[("Bronze<br/>raw Delta · COPY INTO<br/>bronze.raw_purchases")]
+        SI[("Silver<br/>6 clean entities<br/>transform.py")]
+        DQ{"DQ Gate R1–R9<br/>fail-fast · rules.py"}
+        GO[("Gold marts<br/>fact_sales · sales_daily<br/>customer_360 · inventory_kpis")]
+    end
+
+    subgraph SERVE["📊 Consumption"]
+        BI("BI<br/>Databricks SQL")
+        ML("ML<br/>XGBoost · churn · MLflow")
+        AI("AI<br/>Genie / RAG over Gold")
+    end
+
+    subgraph OPS["⚙️ Operations"]
+        TF(["Terraform<br/>workspace assets"])
+        CI(["PR-gated CI<br/>tests · SQL guards · validate"])
+        WF(["Workflow<br/>smart-erp-medallion"])
+    end
+
+    PG -->|"snapshot"| BR
+    BR -->|"standardize"| SI
+    SI -->|"validate"| DQ
+    DQ -->|"certified"| GO
+    GO --> BI
+    GO --> ML
+    GO --> AI
+    TF -.->|"provisions"| BR
+    TF -.->|"provisions"| GO
+    CI -.->|"gates"| DQ
+    WF -.->|"orchestrates"| BR
+    WF -.->|"orchestrates"| GO
+```
+
 *PostgreSQL serves transactions; Databricks serves analytics. Bronze preserves
 raw history, Silver standardizes entities, Gold serves KPIs. Full contract:
 [`docs/lakehouse.md`](docs/lakehouse.md), decisions: [`docs/decisions.md`](docs/decisions.md).*
 
-### Architecture Diagram Sources (D2 · Graphviz)
+### Architecture Diagram Sources (D2 · Graphviz · Mermaid)
 
 The diagrams are maintained as text — version-controlled, easy to update, with SVG committed for direct viewing.
 
+- **Mermaid source** — [`docs/architecture.mmd`](docs/architecture.mmd), rendered natively by GitHub above
 - **D2 source** — [`docs/architecture.d2`](docs/architecture.d2), the preferred format for readability:
   `d2 docs/architecture.d2 docs/architecture.svg`
 - **Graphviz (DOT) source** — [`docs/architecture.dot`](docs/architecture.dot), for broader compatibility:
