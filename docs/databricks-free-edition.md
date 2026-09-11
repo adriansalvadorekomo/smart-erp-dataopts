@@ -54,7 +54,22 @@
 | Stock-critical products (sample) | 364 |
 | DQ gate R1–R9 | passed (Gold built) |
 
-Full 1M backfill replays the same job with the full CSV in the landing volume.
+Full 1M backfill — DONE (replay below; the Workflows job itself needs a token
+with `jobs` scope to trigger remotely, so the run replayed the exact notebook
+SQL — same statements, same order — through the SQL Statements API).
+
+| Check | Result |
+|---|---|
+| `bronze.raw_purchases` / `silver.orders` / `silver.order_items` / `gold.fact_sales` | 1,000,000 rows each |
+| `silver.customers` / `silver.products` | 603,815 / 89,999 (contract §6 ✓) |
+| Revenue Σ `final_price` | **₹9,938,876,984.90** = baseline ₹9,938,876,985 ± ₹1,000 ✓ |
+| Status split | DELIVERED 295,234 / DELAYED 294,983 / IN TRANSIT 293,793 / RETURNED 115,990 (exact source proportions ✓) |
+| Stock-critical products | 3,561 (baseline ✓) |
+| DQ gate R1–R7 | 0 violations across all 11 checks (Gold built) |
+
+Full source: `/Volumes/workspace/bronze/landing/amazon_ecommerce_1M.csv`.
+Note: `bronze.raw_purchases` was `DELETE`d first — `COPY INTO` appends, so a
+replay without reset would double-count the 10k sample rows.
 
 ```bash
 export DATABRICKS_HOST="https://dbc-cba3c27a-ade0.cloud.databricks.com"
