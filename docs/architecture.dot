@@ -1,0 +1,45 @@
+// DataOps Lakehouse — data-flow architecture (Graphviz source)
+// Render: dot -Tsvg docs/architecture.dot -o docs/architecture-gv.svg
+// Also see docs/architecture.d2 (D2 equivalent, rendered as docs/architecture.svg).
+
+digraph lakehouse {
+  rankdir=LR;
+  splines=ortho;
+  nodesep=0.6;
+  ranksep=0.8;
+  fontname="Helvetica";
+  node [fontname="Helvetica" fontsize=11 style="filled,rounded" shape=box];
+  edge [fontname="Helvetica" fontsize=10];
+
+  postgres [label="PostgreSQL OLTP\ncustomers · sellers · products\ninventory · orders · order_items"
+            fillcolor="#E8EEF7" color="#4169E1" penwidth=2];
+  bronze   [label="Bronze\nraw Delta (COPY INTO)"
+            fillcolor="#FDECEA" color="#FF3621" penwidth=2];
+  silver   [label="Silver\n6 clean entities"
+            fillcolor="#FDECEA" color="#FF3621" penwidth=2];
+  dq       [label="DQ gate R1–R9\nfail-fast"
+            fillcolor="#FDECEA" color="#FF3621" penwidth=3 shape=diamond];
+  gold     [label="Gold marts\nfact_sales · sales_daily\ncustomer_360 · inventory_kpis"
+            fillcolor="#FDECEA" color="#FF3621" penwidth=2];
+  bi       [label="BI\nDatabricks SQL"
+            fillcolor="#E6F4EA" color="#1A7F37" penwidth=2];
+  ml       [label="ML\nXGBoost · churn · MLflow"
+            fillcolor="#E6F4EA" color="#1A7F37" penwidth=2];
+  ai       [label="AI\nGenie / RAG over Gold"
+            fillcolor="#E6F4EA" color="#1A7F37" penwidth=2];
+  iac      [label="Terraform\nworkspace assets"
+            fillcolor="#F3EAF7" color="#7B42BC" penwidth=2 shape=folder];
+  ci       [label="PR-gated CI\ntests · sql guards · validate"
+            fillcolor="#F3EAF7" color="#7B42BC" penwidth=2 shape=folder];
+
+  postgres -> bronze [label="snapshot"];
+  bronze -> silver [label="standardize"];
+  silver -> dq [label="validate"];
+  dq -> gold [label="certified"];
+  gold -> bi;
+  gold -> ml;
+  gold -> ai;
+  iac -> bronze [label="provisions" style=dashed];
+  iac -> gold [label="provisions" style=dashed];
+  ci -> dq [label="gates" style=dashed];
+}

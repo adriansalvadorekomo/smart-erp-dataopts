@@ -20,40 +20,58 @@
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    SMART ERP SYSTEM                        │
-│                                                           │
-│  [1] Business Model ──→ [2] DB ──→ [3] Seed Data          │
-│        (PostgreSQL OLTP: customers, sellers, products,    │
-│         inventory, orders, order_items — Phase 4 writes)  │
-│                                    │                       │
-│                                    ▼                       │
-│                         [4] Backend (FastAPI)             │
-│                                    │                       │
-│                                    ▼                       │
-│                         [5] Web App (React)               │
-│                                                           │
-│       [6] Lakehouse (Databricks, Free Edition):           │
-│              │                                             │
-│              PostgreSQL ──snapshot──► Bronze (raw Delta)  │
-│                                           │               │
-│                                     Silver (clean Delta)  │
-│                                      ──DQ gate R1–R9──    │
-│                                           │               │
-│                                      Gold (marts, Delta)  │
-│              │                                             │
-│              ├──→ [7] BI (Databricks SQL over Gold)       │
-│              ├──→ [8] ML (XGBoost/churn, MLflow-native)   │
-│              └──→ [9] AI (Genie/RAG over governed Gold)   │
-│                                                           │
-│       [10] Deploy + Demo ◀────────────────────────────── │
-└─────────────────────────────────────────────────────────┘
-```
+![Lakehouse data-flow architecture](docs/architecture.svg)
 
 *PostgreSQL serves transactions; Databricks serves analytics. Bronze preserves
 raw history, Silver standardizes entities, Gold serves KPIs. Full contract:
 [`docs/lakehouse.md`](docs/lakehouse.md), decisions: [`docs/decisions.md`](docs/decisions.md).*
+
+<details>
+<summary><b>Diagram sources (D2 · Graphviz)</b></summary>
+
+- [`docs/architecture.d2`](docs/architecture.d2) — render with `d2 docs/architecture.d2 docs/architecture.svg`
+- [`docs/architecture.dot`](docs/architecture.dot) — render with `dot -Tsvg docs/architecture.dot -o docs/architecture-gv.svg`
+
+```d2
+direction: right
+
+postgres: "PostgreSQL OLTP\ncustomers · sellers · products\ninventory · orders · order_items"
+bronze: "Bronze\nraw Delta (COPY INTO)"
+silver: "Silver\n6 clean entities"
+dq: "DQ gate R1–R9\nfail-fast"
+gold: "Gold marts\nfact_sales · sales_daily\ncustomer_360 · inventory_kpis"
+bi: "BI\nDatabricks SQL"
+ml: "ML\nXGBoost · churn · MLflow"
+ai: "AI\nGenie / RAG over Gold"
+iac: "Terraform\nworkspace assets"
+ci: "PR-gated CI\ntests · sql guards · validate"
+
+postgres -> bronze: snapshot
+bronze -> silver: standardize
+silver -> dq: validate
+dq -> gold: certified
+gold -> bi
+gold -> ml
+gold -> ai
+iac -> bronze: provisions
+iac -> gold: provisions
+ci -> dq: gates
+```
+
+```dot
+digraph lakehouse {
+  rankdir=LR;
+  postgres -> bronze [label="snapshot"];
+  bronze -> silver [label="standardize"];
+  silver -> dq [label="validate"];
+  dq -> gold [label="certified"];
+  gold -> bi; gold -> ml; gold -> ai;
+  iac -> bronze [style=dashed]; iac -> gold [style=dashed];
+  ci -> dq [style=dashed];
+}
+```
+
+</details>
 
 ---
 
@@ -178,16 +196,6 @@ This project demonstrates a complete **Data Engineering & Lakehouse workflow**:
 - **ML model lifecycle** tracking with native MLflow
 - **Governed AI** — grounded answers over Gold, never a chatbot bypassing the platform
 - **Infrastructure as code** with Terraform; CI-gated Trunk-Based Development
-
----
-
-## Related
-
-| Resource | Link |
-|----------|------|
-| 📄 CV (Multi-Language) | [Download PDFs](https://github.com/adriansalvadorekomo/adriansalvadorekomo/tree/main/cv) |
-| 🏗 Event Analytics Platform | [EventZilla BI](https://github.com/adriansalvadorekomo/Esprit-PABI-4ERPBI6-2526-EventZella) |
-| 📊 HR Workforce Analytics | [Profile Repo](https://github.com/adriansalvadorekomo/adriansalvadorekomo) |
 
 ---
 
