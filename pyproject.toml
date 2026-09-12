@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.0",
-    # Lakehouse pure-logic + OLTP tooling need stdlib only (unittest, no cluster).
-    # Cluster/runtime deps (pyspark, delta-spark, mlflow, databricks-connect) are
-    # introduced with the Phase-8 backfill/training increment — not ahead of need.
+    # Backend/ML runtime (see decisions: local-first, CPU-only).
+    # torch rides the CPU index below — PyPI's default wheel drags ~2GB of
+    # CUDA that no target here (CI, slim image, laptop) can use.
     "fastapi>=0.141.1",
     "pandas>=3.0.5",
     "prophet>=1.4.0",
@@ -16,6 +16,8 @@ dependencies = [
     "pydantic>=2.13.5",
     "scikit-learn>=1.9.1",
     "sqlalchemy>=2.0",
+    "torch>=2.14.0",
+    "uvicorn>=0.52.4",
 ]
 
 [dependency-groups]
@@ -24,5 +26,12 @@ dev = [
     "ipykernel>=7.3.0",
     "matplotlib>=3.11.2",
     "pytest>=9.1.1",
-    "uvicorn>=0.52.4",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
