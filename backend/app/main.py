@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from backend.app.api.assistant import router as assistant_router
 from backend.app.api.orders import router as orders_router
 from backend.app.api.stats import router as stats_router
 from backend.app.core.db import get_session_factory
@@ -33,6 +34,7 @@ app.add_middleware(
 )
 app.include_router(orders_router)
 app.include_router(stats_router)
+app.include_router(assistant_router)
 
 
 @app.get("/health")

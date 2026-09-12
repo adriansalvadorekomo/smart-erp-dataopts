@@ -26,6 +26,7 @@ dated validation snapshot — never faked live data.
 | Route | Question | Backend calls |
 |---|---|---|
 | `/` Overview | How is the business doing right now? | `/stats/overview`, `/revenue-trend`, `/pareto`, `/stats/city-performance`, `/stats/seller-performance` (attention strip) |
+| `/ask` | Ask in words, get cited numbers (deterministic; unknown → capabilities, never invented) | `POST /ai/ask` |
 | `/sales` | What drives revenue, and what is changing? | `/stats/category-trend`, `/stats/city-performance`, `/stats/discount-bands`, `/stats/seller-performance` |
 | `/sellers` | Who performs — and who needs attention? | `/stats/seller-performance` (flags: low rating, delays, returns) |
 | `/operations` | What needs action? | `/stats/city-performance`, `/stats/stock-critical`, `/stats/dq-checks` |

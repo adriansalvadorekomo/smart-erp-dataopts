@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Boxes, ChartLine, LayoutDashboard, Plus, Rows3, SlidersHorizontal, Store } from "lucide-react";
+import { Boxes, ChartLine, LayoutDashboard, Plus, Rows3, SlidersHorizontal, Sparkles, Store } from "lucide-react";
 import { Suspense, lazy } from "react";
 import { Link, NavLink, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ const Pipeline = lazy(() => import("./pages/Pipeline"));
 const Orders = lazy(() => import("./pages/Orders"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 const CreateOrder = lazy(() => import("./pages/CreateOrder"));
+const Assistant = lazy(() => import("./pages/Assistant"));
 
 const qc = new QueryClient();
 
@@ -51,6 +52,7 @@ function App() {
             <nav className="flex flex-col gap-0.5">
               <Section label="Analyze" />
               <NavItem to="/" end icon={<LayoutDashboard size={18} strokeWidth={1.75} />} label="Overview" />
+              <NavItem to="/ask" icon={<Sparkles size={18} strokeWidth={1.75} />} label="Ask" />
               <NavItem to="/sales" icon={<ChartLine size={18} strokeWidth={1.75} />} label="Sales" />
               <NavItem to="/sellers" icon={<Store size={18} strokeWidth={1.75} />} label="Sellers" />
               <Section label="Operate" />
@@ -66,6 +68,9 @@ function App() {
               <nav className="flex gap-5 border-b border-border/60 pb-3 text-[15px] md:hidden">
                 <NavLink to="/" end className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
                   Overview
+                </NavLink>
+                <NavLink to="/ask" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
+                  Ask
                 </NavLink>
                 <NavLink to="/sales" className={({ isActive }) => (isActive ? "font-semibold" : "text-muted-foreground")}>
                   Sales
@@ -83,6 +88,7 @@ function App() {
               <Suspense fallback={<p className="text-[15px] text-muted-foreground">Loading…</p>}>
               <Routes>
                 <Route path="/" element={<Overview />} />
+                <Route path="/ask" element={<Assistant />} />
                 <Route path="/sales" element={<Sales />} />
                 <Route path="/sellers" element={<Sellers />} />
                 <Route path="/operations" element={<Operations />} />
