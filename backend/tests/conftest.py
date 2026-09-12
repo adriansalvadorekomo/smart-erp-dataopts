@@ -36,6 +36,15 @@ def _dsn(dbname: str) -> str:
 
 @pytest.fixture(scope="session")
 def engine():
+    # Point the APP itself at the test DB (background workers resolve their
+    # sessions via get_settings(), not via the overridden dependency).
+    os.environ["PGDATABASE"] = TEST_DB
+    from backend.app.core import db as db_module
+    from backend.app.core.config import get_settings
+
+    get_settings.cache_clear()
+    db_module._engine = None
+    db_module._session_factory = None
     base = _dsn("postgres")
     admin = create_engine(base, isolation_level="AUTOCOMMIT")
     with admin.connect() as conn:
@@ -97,7 +106,9 @@ def session(engine):
     s.commit()
     yield s
     # Reset mutated tables (keep catalog fixtures).
-    for table in ("public.order_items", "public.orders", "public.audit_log"):
+    for table in ("public.order_items", "public.orders", "public.audit_log",
+                  "public.document_chunks", "public.documents",
+                  "public.revenue_forecasts"):
         s.execute(text(f"DELETE FROM {table};"))
     s.execute(
         text(

@@ -256,3 +256,40 @@ class RevenueForecast(Base):
         UniqueConstraint("model", "target_date", name="uq_forecast_model_target"),
         Index("idx_forecasts_target", "target_date"),
     )
+
+
+class Document(Base):
+    """User-attached business document (bytes in UC Volume, registry here)."""
+
+    __tablename__ = "documents"
+
+    document_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    mime_type: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(nullable=False)
+    volume_path: Mapped[str | None] = mapped_column(Text, unique=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'uploaded'"))
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class DocumentChunk(Base):
+    """Text chunk + local embedding for grounded retrieval."""
+
+    __tablename__ = "document_chunks"
+
+    chunk_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("documents.document_id", ondelete="CASCADE"), nullable=False
+    )
+    chunk_index: Mapped[int] = mapped_column(nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("chunk_index >= 0", name="chunks_index_nonneg"),
+        UniqueConstraint("document_id", "chunk_index", name="uq_chunk_doc_idx"),
+        Index("idx_chunks_document", "document_id"),
+    )

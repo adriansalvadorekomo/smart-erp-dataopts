@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Boxes, ChartLine, LayoutDashboard, Plus, Rows3, SlidersHorizontal, Sparkles, Store } from "lucide-react";
+import { Boxes, ChartLine, FileText, LayoutDashboard, Plus, Rows3, SlidersHorizontal, Sparkles, Store } from "lucide-react";
 import { Suspense, lazy } from "react";
 import { Link, NavLink, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const Orders = lazy(() => import("./pages/Orders"));
 const OrderDetail = lazy(() => import("./pages/OrderDetail"));
 const CreateOrder = lazy(() => import("./pages/CreateOrder"));
 const Assistant = lazy(() => import("./pages/Assistant"));
+const Documents = lazy(() => import("./pages/Documents"));
 
 const qc = new QueryClient();
 
@@ -57,6 +58,7 @@ function App() {
               <NavItem to="/sellers" icon={<Store size={18} strokeWidth={1.75} />} label="Sellers" />
               <Section label="Operate" />
               <NavItem to="/operations" icon={<SlidersHorizontal size={18} strokeWidth={1.75} />} label="Operations" />
+              <NavItem to="/documents" icon={<FileText size={18} strokeWidth={1.75} />} label="Documents" />
               <NavItem to="/orders" icon={<Rows3 size={18} strokeWidth={1.75} />} label="Orders" />
               <NavItem to="/new" icon={<Plus size={18} strokeWidth={1.75} />} label="New order" />
               <Section label="Platform" />
@@ -92,6 +94,7 @@ function App() {
                 <Route path="/sales" element={<Sales />} />
                 <Route path="/sellers" element={<Sellers />} />
                 <Route path="/operations" element={<Operations />} />
+                <Route path="/documents" element={<Documents />} />
                 <Route path="/pipeline" element={<Pipeline />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/orders/:id" element={<OrderDetail />} />

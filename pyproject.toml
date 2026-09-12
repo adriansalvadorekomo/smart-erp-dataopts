@@ -14,8 +14,12 @@ dependencies = [
     "prophet>=1.4.0",
     "psycopg[binary]>=3.0",
     "pydantic>=2.13.5",
+    "pypdf>=6.18.1",
+    "python-multipart>=0.0.32",
+    "safetensors>=0.8.0",
     "scikit-learn>=1.9.1",
     "sqlalchemy>=2.0",
+    "transformers>=5.17.0",
 ]
 
 [dependency-groups]
