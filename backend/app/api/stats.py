@@ -78,3 +78,13 @@ def get_stock_critical(
 @router.get("/city-performance")
 def get_city_performance(session: Session = Depends(get_db)):
     return stats.city_performance(session)
+
+
+@router.get("/forecast")
+def get_forecast(
+    trailing: int = Query(default=90, ge=30, le=365),
+    session: Session = Depends(get_db),
+):
+    from backend.app.services.forecast import read_forecast
+
+    return read_forecast(session, trailing=trailing)

@@ -3,6 +3,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -33,6 +34,7 @@ function monthTick(date: string): string {
 export default function Overview() {
   const overview = useQuery({ queryKey: ["overview"], queryFn: api.overview, staleTime: STALE });
   const trend = useQuery({ queryKey: ["trend"], queryFn: () => api.trend(90), staleTime: STALE });
+  const forecast = useQuery({ queryKey: ["forecast"], queryFn: () => api.forecast(90), staleTime: STALE });
   const pareto = useQuery({ queryKey: ["pareto"], queryFn: api.pareto, staleTime: STALE });
   const cities = useQuery({ queryKey: ["cities"], queryFn: api.cities, staleTime: STALE });
   const sellers = useQuery({ queryKey: ["sellers-att"], queryFn: () => api.sellers(20), staleTime: STALE });
@@ -51,6 +53,15 @@ export default function Overview() {
       ? { text: `${worstSeller.seller_id} returns ${formatPercent(worstSeller.return_rate, 0)} of lines`, to: "/sellers" }
       : null,
   ].filter((a): a is { text: string; to: string } => a !== null);
+
+  // Actuals + stored projections on one axis (forecast rows carry rf/prophet only).
+  const rfByDate = new Map((forecast.data?.forecasts.rf ?? []).map((f) => [f.date, f.yhat]));
+  const phByDate = new Map((forecast.data?.forecasts.prophet ?? []).map((f) => [f.date, f.yhat]));
+  const futureDates = [...new Set([...rfByDate.keys(), ...phByDate.keys()])].sort();
+  const chartRows = [
+    ...(trend.data ?? []).map((t) => ({ date: t.date, revenue: t.revenue })),
+    ...futureDates.map((d) => ({ date: d, revenue: null, rf: rfByDate.get(d) ?? null, prophet: phByDate.get(d) ?? null })),
+  ];
 
   return (
     <div className="space-y-10">
@@ -88,13 +99,16 @@ export default function Overview() {
       )}
 
       <Card className="border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-[15px] font-semibold">Revenue · last 90 selling days</CardTitle>
+        <CardHeader className="flex flex-row items-baseline justify-between">
+          <CardTitle className="text-[15px] font-semibold">Revenue · last 90 selling days + 30-day forecast</CardTitle>
+          {forecast.data?.asof && (
+            <span className="text-[13px] text-muted-foreground tabular-nums">as of {forecast.data.asof}</span>
+          )}
         </CardHeader>
         <CardContent className="h-64">
           {trend.data ? (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend.data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <AreaChart data={chartRows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.6} />
                 <XAxis
                   dataKey="date"
@@ -102,7 +116,7 @@ export default function Overview() {
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  minTickGap={32}
+                  minTickGap={48}
                 />
                 <YAxis
                   tickFormatter={(v: number) => `₹${Math.round(v / 1e6)}M`}
@@ -112,10 +126,12 @@ export default function Overview() {
                   tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
                 />
                 <Tooltip
-                  formatter={(v) => [formatINR(Number(v)), "Revenue"]}
+                  formatter={(v, name) => [formatINR(Number(v)), name === "revenue" ? "Revenue" : name === "rf" ? "RF forecast" : "Prophet"]}
                   labelFormatter={(d) => String(d)}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2} fill="var(--primary)" fillOpacity={0.12} />
+                <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2} fill="var(--primary)" fillOpacity={0.12} connectNulls={false} />
+                <Line type="monotone" dataKey="rf" stroke="var(--primary)" strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
+                <Line type="monotone" dataKey="prophet" stroke="#6e6e73" strokeWidth={1.5} strokeDasharray="2 3" dot={false} connectNulls />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
