@@ -325,7 +325,7 @@ Technology choices are rulings, not accidents — full log in [`docs/decisions.m
 | 5 | **Web App** — React (Vite) + TanStack Query + shadcn/ui | 🟢 Done |
 | 6 | **Data Platform** — Databricks Lakehouse (Bronze → Silver → DQ gate → Gold, Workflows) — [lakehouse/](lakehouse/) · [docs/lakehouse.md](docs/lakehouse.md) | 🟢 Done (Free Edition scope) |
 | 7 | **BI** — Databricks SQL over Gold (revenue, top clients, stock critical, order funnel) | 🟡 Planned |
-| 8 | **ML** — Return propensity + customer churn (scikit-learn/XGBoost), MLflow-native tracking | 🟡 Planned |
+| 8 | **ML** — Revenue forecasts in production (RF ships, Prophet second opinion); return/churn propensity deferred with evidence (no signal) — [notebooks/](notebooks/) | 🟢 Done |
 | 9 | **AI** — Grounded assistant over governed Gold (Genie / SQL-first; no generic chatbot) | 🟡 Planned |
 | 10 | **Deploy + Demo** — Terraform (workspace assets) + Docker Compose (local Postgres) | 🟡 Planned |
 
