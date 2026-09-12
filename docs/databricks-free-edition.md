@@ -77,3 +77,31 @@ export DATABRICKS_TOKEN="<personal-access-token>"   # never commit; rotate regul
 export LAKEHOUSE_CATALOG="workspace"   # Free Edition default (Terraform-managed schemas)
 # databricks CLI / Terraform read these automatically
 ```
+
+## Continuous delivery (`.github/workflows/cd.yml`)
+
+Tags (`v*`) and manual dispatches deliver everything; CI (PRs) never touches
+anything outside GitHub. Two lanes:
+
+| Lane | What | Gate |
+|---|---|---|
+| Containers | backend + frontend images → GHCR (`:vX.Y.Z` + `:latest`) | compose smoke: entrypoint migrates, `/health` + `/stats/overview` + app + proxied API all 200 |
+| Databricks | job definition reset from `lakehouse/workflows/smart_erp_job.json` → run `smart-erp-medallion` → Gold validation (§6 counts + revenue) | run SUCCESS + Gold contract green (also the Phase-9 AI readiness gate) |
+
+Setup (one time, owner): GitHub Environment **`databricks-prod`**
+(required reviewers recommended) with secrets `DATABRICKS_HOST`,
+`DATABRICKS_TOKEN` (PAT scopes: `jobs`, `files`, `sql`) and variable
+`WAREHOUSE_ID` (validation warehouse). Concurrency group
+`databricks-workspace` serializes runs (Free Edition runs one at a time).
+
+Deliberate splits (why not Terraform / wider scopes in CD):
+
+- **No `terraform apply` in CD:** state is local-only by design (holds
+  secrets, never enters git), so CI has nothing to plan against — apply would
+  recreate the workspace. Terraform stays the **one-time provisioning** path
+  (schemas, volume, initial job; human + local state). The evolving job ships
+  statelessly via `scripts/cd/deploy_job.py` (`jobs/reset` from the
+  CI-validated JSON, live compute preserved).
+- **No `all-apis`/`dashboards` scopes:** dashboard/chart APIs need them, so
+  Lakeview layout edits stay manual UI steps (`docs/bi.md`); everything
+  versioned still ships through CD.

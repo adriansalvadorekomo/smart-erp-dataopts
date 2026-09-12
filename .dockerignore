@@ -1,0 +1,18 @@
+# Docker build context hygiene (repo-root context for both images).
+# Only files COPYed by a Dockerfile enter layers; this file keeps the
+# context small (no 133MB CSV, no venvs, no cloud state).
+.git/
+.venv/
+__pycache__/
+*.py[oc]
+node_modules/
+frontend/node_modules/
+frontend/dist/
+lakehouse/delta/
+lakehouse/__pycache__/
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.backup
+data/amazon-e-commerce/*.csv
+.opencode/
+.sessions/

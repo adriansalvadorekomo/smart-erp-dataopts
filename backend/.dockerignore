@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[oc]
+.git/
+node_modules/
+frontend/
+infra/
+lakehouse/
+ml/
+rag/
+bi/
+docs/
+data/
+scripts/
+tests/
