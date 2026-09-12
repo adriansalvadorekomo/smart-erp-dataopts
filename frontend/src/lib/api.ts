@@ -98,6 +98,7 @@ export const api = {
   categoryTrend: (months = 12) => request<CategoryMonth[]>(`/stats/category-trend?months=${months}`),
   stockCritical: (limit = 50) => request<StockAlert[]>(`/stats/stock-critical?limit=${limit}`),
   cities: () => request<CityPerf[]>("/stats/city-performance"),
+  forecast: (trailing = 90) => request<ForecastResponse>(`/stats/forecast?trailing=${trailing}`),
 };
 
 export function formatPercent(ratio: number, digits = 1): string {
@@ -176,6 +177,12 @@ export interface CityPerf {
   orders: number;
   delayed_rate: number;
   return_rate: number;
+}
+
+export interface ForecastResponse {
+  asof: string | null;
+  actuals: TrendPoint[];
+  forecasts: { rf: { date: string; yhat: number }[]; prophet: { date: string; yhat: number }[] };
 }
 
 export function formatINR(n: number, digits = 2): string {

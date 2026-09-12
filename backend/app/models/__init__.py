@@ -6,5 +6,6 @@ from backend.app.models.entities import (  # noqa: F401
     Order,
     OrderItem,
     Product,
+    RevenueForecast,
     Seller,
 )

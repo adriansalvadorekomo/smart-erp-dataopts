@@ -232,3 +232,27 @@ class AuditLog(Base):
         Index("idx_audit_table_row", "table_name", "row_pk"),
         Index("idx_audit_at", "at"),
     )
+
+
+class RevenueForecast(Base):
+    """Batch daily-revenue forecasts (Phase 8). RF ships, Prophet second opinion."""
+
+    __tablename__ = "revenue_forecasts"
+
+    forecast_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    asof_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    target_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    horizon_d: Mapped[int] = mapped_column(nullable=False)
+    yhat: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("model IN ('rf', 'prophet')", name="forecasts_model_enum"),
+        CheckConstraint("horizon_d >= 1", name="forecasts_horizon_min"),
+        CheckConstraint("yhat >= 0", name="forecasts_yhat_nonneg"),
+        UniqueConstraint("model", "target_date", name="uq_forecast_model_target"),
+        Index("idx_forecasts_target", "target_date"),
+    )
