@@ -1,0 +1,123 @@
+name: CD
+
+# Continuous delivery (see docs/branching-strategy.md §3): a maintainer tags
+# main with `v*` (or runs this manually) → build backend + frontend images →
+# push to GHCR (tags only) → smoke the full compose stack (entrypoint migrates
+# before serving, so a broken migration fails here, not in prod) → deploy the
+# Databricks workspace assets + run the medallion job + validate Gold (the same
+# Gold that BI dashboards and the Phase-9 AI assistant ground on).
+#
+# Databricks stays credential-gated, never open: host/token come from the
+# `databricks-prod` GitHub Environment (required reviewers recommended).
+# AI note (Phase 9): rag/ deploy + grounded-answer smoke plugs in AFTER
+# databricks-deploy below — Gold validation here is already its readiness gate.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/smart-erp-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/smart-erp-frontend
+
+jobs:
+  images:
+    name: Build + push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta-backend
+        with:
+          images: ${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - uses: docker/metadata-action@v5
+        id: meta-frontend
+        with:
+          images: ${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      # Push only on tags; manual dispatches build to verify Dockerfiles.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+
+  smoke:
+    name: Compose smoke (migrate + serve + API)
+    runs-on: ubuntu-latest
+    needs: images
+    env:
+      PGUSER: magrey
+      PGPASSWORD: pg
+      PGDATABASE: smart
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bring up the stack from source
+        run: docker compose -f infra/docker-compose.yml up -d --build
+      - name: Wait for healthy backend (entrypoint migrates first)
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf localhost:8000/health && break
+            sleep 10
+          done
+          curl -sf localhost:8000/health
+      - name: API + frontend checks
+        run: |
+          curl -sf localhost:8000/stats/overview | grep -q total_orders
+          curl -sf -o /dev/null localhost:8080/
+          curl -sf localhost:8080/api/health | grep -q '"db":"up"'
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs --tail=100
+      - name: Tear down
+        if: always()
+        run: docker compose -f infra/docker-compose.yml down -v
+
+  databricks-deploy:
+    name: Databricks — apply, run medallion, validate Gold
+    runs-on: ubuntu-latest
+    needs: smoke
+    environment: databricks-prod
+    concurrency:
+      group: databricks-workspace
+      cancel-in-progress: false
+    timeout-minutes: 45
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      WAREHOUSE_ID: ${{ vars.WAREHOUSE_ID }}
+      LAKEHOUSE_CATALOG: workspace
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy job definition from versioned JSON (stateless)
+        # No `terraform apply` here on purpose: Terraform state is local-only
+        # (never in git), so CI has nothing to plan against. Terraform stays
+        # the one-time provisioning path; the evolving job definition ships
+        # from lakehouse/workflows/smart_erp_job.json via jobs/reset.
+        run: python3 scripts/cd/deploy_job.py
+      - name: Run the medallion job and validate Gold
+        run: python3 scripts/cd/databricks_release.py
+      # Phase 9 hook: rag/ deploy + grounded-answer smoke goes here, AFTER
+      # Gold is green — a RAG answer is only as trustworthy as its grounding.

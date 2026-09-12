@@ -66,20 +66,19 @@ feature branch ──PR──► main ──tag──► v<semver>
 2. **Open a PR.** CI runs the full validation matrix on the branch (see §5).
 3. **PR is approved** and CI is green → **squash-merge** to `main`.
 4. **CI re-runs on `main`** as a final gate.
-5. **Release:** a maintainer tags `main` with `v<semver>` → CI builds the deployable artifact. Future phases (deploy) hook here.
-
-> **Phase-10 note:** when deployable infra lands, a `releases/` environment will pull by tag. Until then, tags are bookkeeping for deployable `main` snapshots.
+5. **Release:** a maintainer tags `main` with `v<semver>` → **CD** builds GHCR images, smokes the compose stack (migrate-then-serve), deploys the Databricks job, runs the medallion, and validates Gold. Tag is deployable **and deployed**.
 
 ---
 
 ## 4. CI/CD architecture
 
-Two **GitHub Actions** workflows enforce and automate the strategy:
+Two **GitHub Actions** workflows enforce and automate the strategy (plus release notes):
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `.github/workflows/ci.yml` | PRs to `main` + push to `main` + cron | Validate every commit: uv lock, lint, lakehouse tests, Gold SQL sanity, terraform validate, DB migration smoke |
-| `.github/workflows/release.yml` | tag `v*` | Build & publish the deployable artifact from a `main` snapshot |
+| `.github/workflows/release.yml` | tag `v*` | Draft the GitHub Release notes from a `main` snapshot |
+| `.github/workflows/cd.yml` | tag `v*` + manual dispatch | **Deliver:** GHCR images → compose smoke (migrate gate) → Databricks job deploy + medallion run + Gold validation. Secrets via the `databricks-prod` environment; full contract in `docs/databricks-free-edition.md` |
 
 **Branch protection** (enable in GitHub repo settings / `main`):
 - Require PRs before merging.

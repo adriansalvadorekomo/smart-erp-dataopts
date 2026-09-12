@@ -1,7 +1,14 @@
-# Local development stack — Postgres (OLTP) only.
+# Smart-ERP stack: Postgres (OLTP) + FastAPI backend + nginx dashboard.
 # Databricks itself is never containerized; the lakehouse runs on the
-# Free Edition workspace, logic is verified locally via unittest + local_run.py.
-# Usage: docker compose -f infra/docker-compose.yml up -d
+# Free Edition workspace (logic verified via unittest + local_run.py).
+#
+# Usage:
+#   docker compose -f infra/docker-compose.yml up -d --build   # full stack
+#   docker compose -f infra/docker-compose.yml up -d postgres  # DB only (dev)
+#
+# Backend entrypoint runs Alembic BEFORE serving (deploy-time migrate gate).
+# Demo rows (U_DEMO/P_DEMO/S_DEMO) are NOT seeded here — load the 1M CSV
+# (scripts/seed/) or the frontend README snippet for data.
 
 services:
   postgres:
@@ -20,6 +27,42 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: ./backend/Dockerfile
+    image: smart-erp-backend:local
+    container_name: smart-erp-backend
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${PGUSER:-magrey}
+      PGPASSWORD: ${PGPASSWORD:-pg}
+      PGDATABASE: ${PGDATABASE:-smart}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: ./frontend/Dockerfile
+    image: smart-erp-frontend:local
+    container_name: smart-erp-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
