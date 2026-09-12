@@ -48,54 +48,87 @@ def space_id() -> str:
     return sid
 
 
+TERMINAL = ("COMPLETED", "FAILED", "ERROR", "CANCELLED")
+RUNNING = ("SUBMITTED", "FETCHING_METADATA", "FILTERING_CONTEXT", "ASKING_AI",
+           "PENDING_WAREHOUSE", "EXECUTING_QUERY")
+
+
 def ask_genie(question: str) -> dict:
     """Ask Genie; return its SQL, result rows and text (all cited)."""
     sid = space_id()
-    conv = _api("POST", f"/api/2.0/genie/spaces/{sid}/conversations", {})
-    cid = conv.get("conversation_id") or conv.get("id")
-    msg = _api("POST", f"/api/2.0/genie/spaces/{sid}/conversations/{cid}/messages",
-               {"content": question})
-    mid = msg.get("message_id") or msg.get("id")
+    started = _api("POST", f"/api/2.0/genie/spaces/{sid}/start-conversation",
+                   {"content": question})
+    cid = started.get("conversation_id")
+    mid = started.get("message_id") or (started.get("message") or {}).get("message_id")
+    if not cid or not mid:
+        raise GenieError(f"unexpected start-conversation shape: {str(started)[:200]}")
     deadline = time.time() + TIMEOUT_SECONDS
+    cur: dict = {}
     while True:
         cur = _api("GET", f"/api/2.0/genie/spaces/{sid}/conversations/{cid}/messages/{mid}")
-        status = (cur.get("status") or cur.get("state") or "").upper()
-        if status in ("SUCCEEDED", "COMPLETED", "FAILED", "ERROR", "CANCELLED"):
+        status = str(cur.get("status") or "").upper()
+        if status in TERMINAL or status == "QUERY_RESULT_EXPIRED":
             break
         if time.time() > deadline:
             raise GenieError("Genie answer timed out")
         time.sleep(POLL_SECONDS)
     if status in ("FAILED", "ERROR", "CANCELLED"):
-        raise GenieError(f"Genie could not answer: {(cur.get('error') or cur.get('message') or status)}")
-    sql, rows, text = _extract(cur)
+        raise GenieError(f"Genie could not answer: {(cur.get('error') or status)}")
+    sql, rows, text = _extract(sid, cid, mid, cur, question)
     return {"answer": text or _summarize(rows), "intent": "genie",
             "sources": [{"endpoint": "Genie Space", "params": {"space_id": sid}},
                         {"endpoint": "Genie SQL", "params": {"sql": sql}}],
             "sql": sql, "rows": rows}
 
 
-def _extract(msg: dict) -> tuple[str, list, str]:
-    """Pull (sql, rows, text) from a completed Genie message (shape-tolerant)."""
+def _extract(sid: str, cid: str, mid: str, msg: dict, question: str) -> tuple[str, list, str]:
+    """Pull (sql, rows, text) from a completed message, fetching full results."""
     sql, rows, texts = "", [], []
-    attachments = msg.get("attachments") or msg.get("query_result") or []
+    echo = question.strip().lower()
+
+    def keep(t: object) -> None:
+        if isinstance(t, str) and t.strip() and t.strip().lower() != echo:
+            texts.append(t.strip())
+    attachments = msg.get("attachments") or []
     if isinstance(attachments, dict):
         attachments = [attachments]
-    for att in attachments if isinstance(attachments, list) else []:
+    for att in attachments:
         if not isinstance(att, dict):
             continue
         q = att.get("query") or {}
         if isinstance(q, dict) and q.get("query"):
             sql = q["query"]
-        data = att.get("data") or att.get("rows") or []
-        if isinstance(data, list) and data:
+        elif isinstance(q, str):
+            sql = q
+        data = _attachment_rows(sid, cid, mid, att)
+        if data:
             rows = data
-        t = att.get("text") or (att.get("content") or "")
-        if isinstance(t, str) and t.strip():
-            texts.append(t.strip())
-    content = msg.get("content")
-    if isinstance(content, str) and content.strip():
-        texts.append(content.strip())
+        for key in ("text", "content"):
+            keep(att.get(key))
+    keep(msg.get("content"))
     return sql, rows, "\n".join(texts).strip()
+
+
+def _attachment_rows(sid: str, cid: str, mid: str, att: dict) -> list:
+    """Inline rows if present, else fetch via the query-result endpoint."""
+    qr = att.get("query_result") or {}
+    stmt = qr.get("statement_response") or {}
+    data = (stmt.get("result") or {}).get("data_array")
+    cols = [c.get("name") for c in (stmt.get("manifest") or {}).get("schema", {}).get("columns", [])]
+    if data:
+        return [dict(zip(cols, r)) if cols else list(r) for r in data]
+    aid = att.get("attachment_id")
+    if not aid:
+        return []
+    try:
+        res = _api("GET", f"/api/2.0/genie/spaces/{sid}/conversations/{cid}"
+                          f"/messages/{mid}/attachments/{aid}/query-result")
+    except GenieError:
+        return []
+    stmt = (res.get("statement_response") or res)
+    data = (stmt.get("result") or {}).get("data_array") or []
+    cols = [c.get("name") for c in (stmt.get("manifest") or {}).get("schema", {}).get("columns", [])]
+    return [dict(zip(cols, r)) if cols else list(r) for r in data]
 
 
 def _summarize(rows: list) -> str:

@@ -33,9 +33,16 @@ reverse-engineering against a UI that does it in clicks:
    `inventory_kpis` (+ `dim_*` as they land).
 3. Add 2–3 sample questions (e.g. "total revenue by month", "return rate by
    category") so business users see the pattern.
-4. Copy the space ID from the URL → backend env **`GENIE_SPACE_ID`**.
-5. Verify: `POST /ai/ask-genie {"question": "total revenue?"}` returns SQL +
-   rows. Without the ID it answers 502 with these instructions.
+4. Copy the space ID from the URL (`.../genie/<space-id>`) → backend env
+   **`GENIE_SPACE_ID`**.
+5. Verify: `POST /ai/ask-genie {"question": "total revenue?"}` returns Genie's
+   own SQL plus result rows (verified live: `SUM(revenue)` over
+   `workspace.gold.sales_daily` → ₹9,938,876,984.90 = baseline).
+
+Relay flow (`services/genie.py`, conversation API): `start-conversation` →
+poll message to `COMPLETED` → attachments (SQL + inline rows, else fetch via
+`query-result`) → answer = Genie text (question echoes filtered) or a row
+summary. Without the ID the endpoint answers 502 with these instructions.
 
 ## Documents pipeline
 
