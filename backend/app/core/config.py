@@ -10,11 +10,15 @@ from functools import lru_cache
 
 
 class Settings:
-    pg_host: str = os.environ.get("PGHOST", "uptown")
-    pg_port: int = int(os.environ.get("PGPORT", "5432"))
-    pg_user: str = os.environ.get("PGUSER", "magrey")
-    pg_password: str = os.environ.get("PGPASSWORD", "")
-    pg_database: str = os.environ.get("PGDATABASE", "smart")
+    """Values bind per instantiation (never at import), so process env —
+    and test overrides — always take effect. Pair with get_settings.cache_clear()."""
+
+    def __init__(self) -> None:
+        self.pg_host: str = os.environ.get("PGHOST", "uptown")
+        self.pg_port: int = int(os.environ.get("PGPORT", "5432"))
+        self.pg_user: str = os.environ.get("PGUSER", "magrey")
+        self.pg_password: str = os.environ.get("PGPASSWORD", "")
+        self.pg_database: str = os.environ.get("PGDATABASE", "smart")
 
     @property
     def dsn(self) -> str:
