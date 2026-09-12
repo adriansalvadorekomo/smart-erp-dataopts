@@ -38,11 +38,26 @@ resource "databricks_volume" "landing" {
   comment      = "Raw CSV landing (sample-first; production: Postgres snapshot)."
 }
 
+# User-attached business documents (Phase 9 RAG). Bytes land here from the
+# backend (DatabricksVolumeStore); registry + chunks + vectors in Postgres.
+resource "databricks_volume" "documents" {
+  catalog_name = var.catalog_name
+  schema_name  = databricks_schema.bronze.name
+  name         = "documents"
+  volume_type  = "MANAGED"
+  comment      = "User-attached business documents (Phase 9 RAG)"
+}
+
 resource "databricks_job" "medallion" {
   name                    = "smart-erp-medallion"
   description             = "PostgreSQL → Bronze → Silver → DQ gate → Gold → SQL refresh."
   max_concurrent_runs     = 1
   timeout_seconds         = 3600
+
+  # Task DEFINITIONS live in lakehouse/workflows/smart_erp_job.json and ship
+  # via scripts/cd/deploy_job.py (jobs/reset) — see the lifecycle block below.
+  # The task blocks here document the intended shape for first-time provision;
+  # day-to-day drift is owned by the JSON, not by Terraform.
 
   # Free Edition supports serverless compute only — no node types (ADR-8).
   environment {
@@ -98,5 +113,11 @@ resource "databricks_job" "medallion" {
       file { path = "${var.job_path_prefix}/lakehouse/sql/gold/sales_daily.sql" }
       warehouse_id = var.warehouse_id
     }
+  }
+
+  lifecycle {
+    # Provider-side task ordering never settles (perpetual diff with identical
+    # content). Definition drift is owned by the JSON + deploy_job.py anyway.
+    ignore_changes = [task]
   }
 }

@@ -14,8 +14,13 @@ dependencies = [
     "prophet>=1.4.0",
     "psycopg[binary]>=3.0",
     "pydantic>=2.13.5",
+    "pypdf>=6.18.1",
+    "python-multipart>=0.0.32",
+    "safetensors>=0.8.0",
     "scikit-learn>=1.9.1",
     "sqlalchemy>=2.0",
+    "torch>=2.14.0",
+    "transformers>=5.17.0",
 ]
 
 [dependency-groups]
@@ -26,3 +31,6 @@ dev = [
     "pytest>=9.1.1",
     "uvicorn>=0.52.4",
 ]
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cpu"
