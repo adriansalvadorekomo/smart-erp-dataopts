@@ -21,6 +21,20 @@ jobs:
       - name: Verify lockfile matches pyproject.toml
         run: uv lock --check
 
+  delivery-checks:
+    name: CD — pipeline contracts (no daemon, no secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.5.x"
+          enable-cache: true
+      - name: Install project
+        run: uv sync --frozen
+      - name: CD contract tests (Gold math, job translation, workflow/compose sanity)
+        run: uv run pytest scripts/cd/test_cd.py -q
+
   lint:
     name: Python — lint
     runs-on: ubuntu-latest

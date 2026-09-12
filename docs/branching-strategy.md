@@ -104,6 +104,7 @@ Runs on every PR and every push to `main`. Failure blocks the merge.
 | `backend-test` | Alembic migrate + pytest orders API on throwaway Postgres | failing contract |
 | `frontend-build` | `npm ci` + `tsc -b` + `vite build` in `frontend/` | type/build break |
 | `seed-acceptance-note` | doc-consistency guard (full 1M-row acceptance needs the git-ignored CSV, runs locally) | contract drift |
+| `delivery-checks` | CD pipeline contracts without daemon/secrets: Gold math, job-JSON translation, workflow/compose sanity, entrypoint syntax | broken delivery path |
 
 > Machine-local credentials (Databricks token, PG passwords) are **never** in the repo and CI never deploys to the workspace — Free Edition deploy stays a manual `workflow_dispatch`. See `docs/databricks-free-edition.md`.
 

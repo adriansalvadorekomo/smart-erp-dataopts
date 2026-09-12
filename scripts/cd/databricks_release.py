@@ -30,6 +30,19 @@ POLL_SECONDS = 30
 TIMEOUT_SECONDS = 30 * 60
 
 
+def validate_gold(bronze: int, orders: int, items: int, fact: int,
+                  revenue: float) -> list[str]:
+    """Pure §6 contract check (unit-tested; the live step only fetches)."""
+    errors = []
+    for name, got in (("bronze", bronze), ("orders", orders),
+                      ("items", items), ("fact", fact)):
+        if got != EXPECTED_ROWS:
+            errors.append(f"{name}={got:,} != {EXPECTED_ROWS:,}")
+    if abs(revenue - EXPECTED_REVENUE) > REVENUE_TOLERANCE:
+        errors.append(f"revenue ₹{revenue:,.2f} outside ±₹{REVENUE_TOLERANCE:,}")
+    return errors
+
+
 def api(method: str, path: str, payload: dict | None = None) -> dict:
     host = os.environ["DATABRICKS_HOST"].rstrip("/")
     req = urllib.request.Request(
@@ -113,13 +126,7 @@ def main() -> int:
     revenue = float(rows[4])
     print(f"bronze={bronze:,} orders={orders:,} items={items:,} fact={fact:,}")
     print(f"revenue=₹{revenue:,.2f}")
-    errors = []
-    for name, got in (("bronze", bronze), ("orders", orders),
-                      ("items", items), ("fact", fact)):
-        if got != EXPECTED_ROWS:
-            errors.append(f"{name}={got:,} != {EXPECTED_ROWS:,}")
-    if abs(revenue - EXPECTED_REVENUE) > REVENUE_TOLERANCE:
-        errors.append(f"revenue ₹{revenue:,.2f} outside ±₹{REVENUE_TOLERANCE:,}")
+    errors = validate_gold(bronze, orders, items, fact, revenue)
     if errors:
         print("GOLD VALIDATION FAILED:", file=sys.stderr)
         for e in errors:
